@@ -44,6 +44,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "1.0.4",
+    "cors": "2.8.5",
     "date-fns": "4.1.0",
     "electron": "39.2.7",
     "embla-carousel-react": "8.5.1",

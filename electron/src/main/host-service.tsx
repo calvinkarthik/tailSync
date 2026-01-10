@@ -1,6 +1,7 @@
 import express from "express"
 import { createServer, type Server } from "http"
 import { WebSocketServer, WebSocket } from "ws"
+import cors from "cors"
 import multer from "multer"
 import path from "path"
 import fs from "fs"
@@ -35,7 +36,20 @@ export class HostService {
   }
 
   private setupMiddleware() {
+    this.app.use(
+      cors({
+        origin: "*",
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allowedHeaders: ["Content-Type", "Authorization"],
+      }),
+    )
+
     this.app.use(express.json())
+
+    this.app.use((req, res, next) => {
+      console.log(`[v0] ${req.method} ${req.path} from ${req.ip}`)
+      next()
+    })
 
     if (!fs.existsSync(WORKSPACE_DIR)) {
       fs.mkdirSync(WORKSPACE_DIR, { recursive: true })
@@ -59,17 +73,26 @@ export class HostService {
 
     const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } })
 
+    this.app.get("/api/health", (req, res) => {
+      console.log("[v0] Health check received")
+      res.json({ status: "ok", code: this.code })
+    })
+
     this.app.post("/api/create-workspace", (req, res) => {
+      console.log("[v0] Create workspace request")
       res.json({ code: this.code })
     })
 
     this.app.post("/api/join", (req, res) => {
       const { code } = req.body
+      console.log(`[v0] Join request with code: ${code}, expected: ${this.code}`)
 
       if (code !== this.code) {
+        console.log("[v0] Invalid code - rejecting")
         return res.status(403).json({ error: "Invalid workspace code" })
       }
 
+      console.log("[v0] Join successful!")
       res.json({
         workspace: this.workspace,
         posts: this.posts,
@@ -150,7 +173,8 @@ export class HostService {
       this.server = createServer(this.app)
       this.wss = new WebSocketServer({ server: this.server })
 
-      this.wss.on("connection", (ws) => {
+      this.wss.on("connection", (ws, req) => {
+        console.log(`[v0] WebSocket connection from ${req.socket.remoteAddress}`)
         this.clients.add(ws)
         this.broadcast({
           type: "presence",
@@ -160,6 +184,7 @@ export class HostService {
         ws.on("message", (data) => {
           try {
             const msg = JSON.parse(data.toString())
+            console.log("[v0] WebSocket message:", msg.type)
             if (msg.type === "chat") {
               const chatMessage: ChatMessage = {
                 id: uuidv4(),
@@ -171,11 +196,12 @@ export class HostService {
               this.broadcast({ type: "chat", data: chatMessage })
             }
           } catch (err) {
-            console.error("WebSocket message error:", err)
+            console.error("[v0] WebSocket message error:", err)
           }
         })
 
         ws.on("close", () => {
+          console.log("[v0] WebSocket disconnected")
           this.clients.delete(ws)
           this.broadcast({
             type: "presence",
@@ -184,13 +210,27 @@ export class HostService {
         })
       })
 
+      const os = require("os")
+      const interfaces = os.networkInterfaces()
+      console.log("[v0] Available network interfaces:")
+      Object.keys(interfaces).forEach((name) => {
+        interfaces[name]?.forEach((iface: any) => {
+          if (iface.family === "IPv4" && !iface.internal) {
+            console.log(`[v0]   ${name}: ${iface.address}`)
+          }
+        })
+      })
+
       this.server.listen(4173, "0.0.0.0", () => {
-        console.log("Host service running on http://0.0.0.0:4173")
-        console.log("Other devices can connect via your Tailscale IP on port 4173")
+        console.log("[v0] Host service running on http://0.0.0.0:4173")
+        console.log("[v0] Other devices can connect via your Tailscale IP on port 4173")
         resolve()
       })
 
-      this.server.on("error", reject)
+      this.server.on("error", (err) => {
+        console.error("[v0] Server error:", err)
+        reject(err)
+      })
     })
   }
 
