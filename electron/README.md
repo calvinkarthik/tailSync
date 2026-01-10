@@ -1,106 +1,214 @@
 # TailOverlay
 
-A cross-platform desktop overlay app for secure workspace sharing over Tailscale.
+A cross-platform desktop overlay app for secure workspace sharing over Tailscale. Built for the Tailscale integration hackathon prize.
+
+## Overview
+
+TailOverlay creates a private, secure workspace between exactly TWO devices connected on a Tailscale tailnet. The workspace includes:
+- **Real-time Chat** - Instant messaging between devices
+- **File Sharing** - Upload and download files directly in the workspace
+- **Screenshot Capture** - One-click screenshot sharing with optional captions into a shared feed
+
+**Primary Goal**: Tailscale is ESSENTIAL, not optional. The workspace host service is accessible ONLY over Tailscale, and the project supports a demo where an ACL blocks/unblocks access to demonstrate Tailscale's security model.
 
 ## Features
 
-- **Secure Workspace Sharing**: Host or join workspaces over your Tailscale tailnet
-- **Real-time Chat**: Communicate with your teammate instantly
-- **Screenshot Capture**: One-click screenshot sharing with optional captions
-- **File Sharing**: Upload and download files directly in the workspace
-- **ACL Enforcement**: Demonstrates Tailscale ACL-based access control
-- **Funnel Demo Lobby**: Optional public landing page for hackathon judges
+- **Secure Workspace Sharing**: Host or join workspaces exclusively over your Tailscale tailnet
+- **ACL Enforcement Demo**: Demonstrates Tailscale ACL-based access control (block/unblock)
+- **Funnel Demo Lobby**: Optional public landing page with QR code for hackathon judges
+- **Identity Integration**: Displays Tailscale identity (device name + user email) on messages
 
 ## Requirements
 
-- [Node.js](https://nodejs.org/) 18+
+- [Node.js](https://nodejs.org/) v20.19+ or v22.12+
 - [Tailscale](https://tailscale.com/download) installed and logged in
 - Both devices must be on the same Tailscale tailnet
 
 ## Installation
 
-\`\`\`bash
+```bash
 cd electron
 npm install
-\`\`\`
+```
 
 ## Development
 
-\`\`\`bash
-# Start in development mode
+```bash
+# Terminal 1 - Start TypeScript compiler and Vite
 npm run dev
 
-# In another terminal, start Electron
+# Terminal 2 - Start Electron (after "Found 0 errors" appears)
 npm start
-\`\`\`
+```
 
-## Building
+## Architecture
 
-\`\`\`bash
-# Build for production
-npm run build
+```
+electron/
+├── src/
+│   ├── main/                    # Electron main process
+│   │   ├── index.ts             # App entry, window management, IPC handlers
+│   │   ├── preload.ts           # Context bridge for secure renderer access
+│   │   ├── host-service.tsx     # Express + WebSocket server (port 4173)
+│   │   └── tailscale-manager.ts # Tailscale CLI integration (serve/funnel)
+│   ├── renderer/                # React UI
+│   │   ├── App.tsx              # Main app component with state management
+│   │   └── components/          # UI components (WelcomeScreen, ChatTab, etc.)
+│   └── shared/                  # Shared TypeScript types
+│       └── types.ts             # Post, ChatMessage, Workspace types
+└── package.json
+```
 
-# Package as distributable
-npm run package
-\`\`\`
+## Tailscale Integration
+
+### How It Works
+
+1. **Host Service**: Runs on `localhost:4173` (HTTP) and `localhost:4174` (Funnel demo)
+2. **Tailscale Serve**: Exposes the host service as a private HTTPS URL within your tailnet
+3. **Tailscale Funnel**: Optionally exposes a read-only demo lobby publicly for judges
+
+### API Endpoints (Host Service)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/create-workspace` | POST | Creates workspace, returns 6-digit code |
+| `/api/join` | POST | Join with `{ code }`, returns workspace metadata |
+| `/api/feed` | GET | Returns list of posts (screenshots/files) |
+| `/api/upload` | POST | Multipart upload for files/screenshots |
+| `/api/health` | GET | Health check with current workspace code |
+| `/ws` | WebSocket | Real-time events (chat, posts, presence) |
+| `/demo` | GET | Public demo lobby page (Funnel only) |
+
+### WebSocket Message Types
+
+- `chat` - `{ text, senderIdentity, ts }`
+- `post:new` - `{ post }` for new screenshot/file
+- `presence` - `{ status }` for join/leave events
 
 ## Usage
 
 ### Hosting a Workspace
 
 1. Ensure Tailscale is running and you're logged in
-2. Click "Host Workspace"
-3. Share the 6-digit code and Tailnet URL with your teammate
-4. Start chatting, sharing files, and taking screenshots!
+2. Launch the app and click **"Host Workspace"**
+3. The app will:
+   - Start the host service on port 4173
+   - Generate a 6-digit code
+   - Run `tailscale serve` to create a private HTTPS URL
+4. Share the **6-digit code** and **Tailscale IP** (starts with `100.`) with your teammate
+5. Start chatting, sharing files, and taking screenshots!
 
 ### Joining a Workspace
 
 1. Ensure Tailscale is running and you're logged in
-2. Click "Join Workspace"
-3. Enter the host's Tailnet URL and 6-digit code
-4. Connect and start collaborating!
+2. Launch the app and click **"Join Workspace"**
+3. Enter the host's **Tailscale IP** (e.g., `100.64.0.5`) and **6-digit code**
+4. Click Connect and start collaborating!
 
-### ACL Demo
+### Testing Connection
 
-To demonstrate Tailscale ACL enforcement:
+On the guest device, test connectivity before using the app:
 
-1. In the Tailscale admin console, create an ACL rule that blocks the joiner from accessing port 4173 on the host
-2. Attempt to join - you'll see an "ACL blocked" error
-3. Update the ACL to allow access
-4. Join successfully - demonstrating that Tailscale ACLs control access
+```bash
+# Replace with host's Tailscale IP
+curl http://100.x.x.x:4173/api/health
+```
 
-### Funnel Demo Lobby
+Should return: `{"status":"ok","code":"123456"}`
 
-When hosting, you can enable the "Public Demo Lobby" toggle. This uses Tailscale Funnel to expose a read-only landing page with a QR code that judges can scan. The actual workspace content remains private over the tailnet.
+## ACL Demo (Hackathon Requirement)
 
-## Architecture
+This app is designed to demonstrate Tailscale ACL enforcement:
 
-\`\`\`
-electron/
-├── src/
-│   ├── main/           # Electron main process
-│   │   ├── index.ts    # App entry, window management, IPC
-│   │   ├── preload.ts  # Context bridge for renderer
-│   │   ├── host-service.ts    # Express + WebSocket server
-│   │   └── tailscale-manager.ts  # Tailscale CLI integration
-│   ├── renderer/       # React UI
-│   │   ├── App.tsx     # Main app component
-│   │   └── components/ # UI components
-│   └── shared/         # Shared TypeScript types
-└── package.json
-\`\`\`
+### Demo Steps
 
-## Tailscale Integration
+1. **Block Access**: In the [Tailscale admin console](https://login.tailscale.com/admin/acls), add an ACL rule that blocks the joiner's device from accessing port 4173 on the host
+2. **Attempt Join**: The joiner will see a friendly error: *"Blocked by Tailscale ACL or not on tailnet"*
+3. **Allow Access**: Update the ACL to permit access
+4. **Join Successfully**: Demonstrates that Tailscale ACLs control access to the workspace
 
-- **Tailscale Serve**: The host service binds to localhost:4173 and is exposed via `tailscale serve` to create a private HTTPS URL accessible only within the tailnet.
-- **Tailscale Funnel**: Optionally exposes a demo lobby page publicly for judges.
-- **Identity**: Extracts device name and user email from `tailscale status --json`.
+### Example ACL Rules
+
+```json
+// Block access
+{
+  "action": "deny",
+  "src": ["joiner-device"],
+  "dst": ["host-device:4173"]
+}
+
+// Allow access
+{
+  "action": "accept",
+  "src": ["joiner-device"],
+  "dst": ["host-device:4173"]
+}
+```
+
+## Funnel Demo Lobby (Optional)
+
+For hackathon judges who aren't on your tailnet:
+
+1. Enable **"Public Demo Lobby"** toggle when hosting
+2. The app runs `tailscale funnel` to expose a read-only landing page
+3. Judges can scan a QR code to see project info (workspace content remains private)
+4. Demo lobby runs on port 4174, separate from the private workspace
+
+## Identity
+
+TailOverlay extracts identity from `tailscale status --json`:
+- **Device Name**: Your machine's Tailscale hostname
+- **User Email**: Your Tailscale account email
+
+This identity appears on all chat messages and posts for attribution.
+
+## Data Model
+
+```typescript
+interface Workspace {
+  code: string;        // 6-digit numeric code
+  createdAt: number;
+}
+
+interface Post {
+  id: string;
+  type: "screenshot" | "file";
+  filename: string;
+  mimeType: string;
+  size: number;
+  caption?: string;
+  createdAt: number;
+  senderIdentity: string;
+  downloadUrl: string;
+}
+
+interface ChatMessage {
+  id: string;
+  text: string;
+  createdAt: number;
+  senderIdentity: string;
+}
+```
 
 ## Tech Stack
 
-- **Electron**: Cross-platform desktop framework
-- **React**: UI framework
-- **TypeScript**: Type-safe JavaScript
-- **Express**: HTTP API server
-- **WebSocket**: Real-time communication
-- **Tailwind CSS v4**: Styling
+- **Electron** - Cross-platform desktop framework
+- **React** - UI framework
+- **TypeScript** - Type-safe JavaScript
+- **Express** - HTTP API server
+- **WebSocket (ws)** - Real-time communication
+- **Tailwind CSS** - Styling
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Devices don't see each other | Run `tailscale status` on both - ensure same tailnet |
+| "tailscale: command not found" | Add Tailscale to PATH or use full path |
+| Connection refused | Check host service is running, firewall allows port 4173 |
+| Join fails with ACL error | Update Tailscale ACLs to allow access |
+| Funnel not working | Funnel requires HTTPS, must be enabled in admin console |
+
+## License
+
+MIT
