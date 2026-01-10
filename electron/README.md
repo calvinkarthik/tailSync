@@ -19,30 +19,30 @@ A cross-platform desktop overlay app for secure workspace sharing over Tailscale
 
 ## Installation
 
-```bash
+\`\`\`bash
 cd electron
 npm install
-```
+\`\`\`
 
 ## Development
 
-```bash
+\`\`\`bash
 # Start in development mode
 npm run dev
 
 # In another terminal, start Electron
 npm start
-```
+\`\`\`
 
 ## Building
 
-```bash
+\`\`\`bash
 # Build for production
 npm run build
 
 # Package as distributable
 npm run package
-```
+\`\`\`
 
 ## Usage
 
@@ -75,7 +75,7 @@ When hosting, you can enable the "Public Demo Lobby" toggle. This uses Tailscale
 
 ## Architecture
 
-```
+\`\`\`
 electron/
 ├── src/
 │   ├── main/           # Electron main process
@@ -88,7 +88,7 @@ electron/
 │   │   └── components/ # UI components
 │   └── shared/         # Shared TypeScript types
 └── package.json
-```
+\`\`\`
 
 ## Tailscale Integration
 
