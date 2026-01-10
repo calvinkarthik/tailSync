@@ -184,8 +184,9 @@ export class HostService {
         })
       })
 
-      this.server.listen(4173, "127.0.0.1", () => {
-        console.log("Host service running on http://127.0.0.1:4173")
+      this.server.listen(4173, "0.0.0.0", () => {
+        console.log("Host service running on http://0.0.0.0:4173")
+        console.log("Other devices can connect via your Tailscale IP on port 4173")
         resolve()
       })
 
@@ -309,7 +310,7 @@ export class HostService {
         <body>
           <div class="card">
             <div class="logo">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2">
                 <path d="M12 2L2 7l10 5 10-5-10-5z"/>
                 <path d="M2 17l10 5 10-5"/>
                 <path d="M2 12l10 5 10-5"/>
@@ -330,8 +331,8 @@ export class HostService {
     })
 
     this.demoServer = createServer(demoApp)
-    this.demoServer.listen(port, "127.0.0.1", () => {
-      console.log(`Demo lobby running on http://127.0.0.1:${port}/demo`)
+    this.demoServer.listen(port, "0.0.0.0", () => {
+      console.log(`Demo lobby running on http://0.0.0.0:${port}/demo`)
     })
   }
 

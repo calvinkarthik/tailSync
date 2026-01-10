@@ -25,7 +25,25 @@ export function WelcomeScreen({ tailscaleStatus, onStartHost, onJoin, error, isC
   const handleJoinSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (tailnetUrl && code) {
-      onJoin(tailnetUrl.trim(), code.trim())
+      let normalizedUrl = tailnetUrl.trim()
+
+      // If user just enters an IP or hostname without protocol, add http://
+      if (!normalizedUrl.startsWith("http://") && !normalizedUrl.startsWith("https://")) {
+        // If it looks like a Tailscale IP (100.x.x.x), use http
+        if (/^100\.\d+\.\d+\.\d+/.test(normalizedUrl)) {
+          normalizedUrl = `http://${normalizedUrl}`
+        } else {
+          // Otherwise assume https for .ts.net domains
+          normalizedUrl = `https://${normalizedUrl}`
+        }
+      }
+
+      // Add port 4173 if no port specified and not using https
+      if (!normalizedUrl.includes(":4173") && !normalizedUrl.includes(":443") && normalizedUrl.startsWith("http://")) {
+        normalizedUrl = `${normalizedUrl}:4173`
+      }
+
+      onJoin(normalizedUrl, code.trim())
     }
   }
 
@@ -114,14 +132,17 @@ export function WelcomeScreen({ tailscaleStatus, onStartHost, onJoin, error, isC
 
           <form onSubmit={handleJoinSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Host Tailnet URL</label>
+              <label className="block text-sm font-medium mb-2">Host Address</label>
               <input
                 type="text"
                 value={tailnetUrl}
                 onChange={(e) => setTailnetUrl(e.target.value)}
-                placeholder="https://device.tailnet.ts.net"
+                placeholder="100.x.x.x or device.tailnet.ts.net"
                 className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter the host's Tailscale IP (e.g., 100.64.0.1) or MagicDNS name
+              </p>
             </div>
 
             <div>
