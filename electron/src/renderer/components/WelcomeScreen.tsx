@@ -4,7 +4,7 @@ import type React from "react"
 import { useState } from "react"
 import type { TailscaleStatus } from "../../shared/types"
 import { TailscaleStatusPanel } from "./TailscaleStatusPanel"
-import { DemoModeGuide } from "./DemoModeGuide"
+import { SetupGuide } from "./DemoModeGuide"
 
 interface WelcomeScreenProps {
   tailscaleStatus: TailscaleStatus
@@ -18,7 +18,7 @@ export function WelcomeScreen({ tailscaleStatus, onStartHost, onJoin, error, isC
   const [joinMode, setJoinMode] = useState(false)
   const [tailnetUrl, setTailnetUrl] = useState("")
   const [code, setCode] = useState("")
-  const [showDemoGuide, setShowDemoGuide] = useState(false)
+  const [showSetupGuide, setShowSetupGuide] = useState(false)
 
   const canConnect = tailscaleStatus.running && tailscaleStatus.loggedIn
 
@@ -47,8 +47,8 @@ export function WelcomeScreen({ tailscaleStatus, onStartHost, onJoin, error, isC
     }
   }
 
-  if (showDemoGuide) {
-    return <DemoModeGuide onBack={() => setShowDemoGuide(false)} />
+  if (showSetupGuide) {
+    return <SetupGuide onBack={() => setShowSetupGuide(false)} />
   }
 
   return (
@@ -104,10 +104,10 @@ export function WelcomeScreen({ tailscaleStatus, onStartHost, onJoin, error, isC
           </button>
 
           <button
-            onClick={() => setShowDemoGuide(true)}
+            onClick={() => setShowSetupGuide(true)}
             className="mt-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            View ACL Demo Guide
+            View Tailscale Setup Guide
           </button>
         </div>
       ) : (
