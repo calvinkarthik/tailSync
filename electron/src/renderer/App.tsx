@@ -187,27 +187,37 @@ export default function App() {
   }
 
   const handleDisconnect = async () => {
-    if (ws) {
-      ws.close()
-      setWs(null)
+    try {
+      if (ws) {
+        ws.close()
+        setWs(null)
+      }
+
+      if (hostWs) {
+        hostWs.close()
+        setHostWs(null)
+      }
+
+      if (state.mode === "host") {
+        await window.electronAPI.stopHost()
+      }
+    } catch (err) {
+      console.error("Disconnect error:", err)
+    } finally {
+      // Force-reset UI back to welcome immediately
+      setState({ ...initialState })
+      setIdentity(null)
+      setPosts([])
+      setMessages([])
+
+      // Refresh tailscale status in the background
+      try {
+        const status = await window.electronAPI.getTailscaleStatus()
+        setState((prev) => ({ ...prev, tailscaleStatus: status }))
+      } catch (err) {
+        console.error("Failed to refresh Tailscale status:", err)
+      }
     }
-
-    if (hostWs) {
-      hostWs.close()
-      setHostWs(null)
-    }
-
-    if (state.mode === "host") {
-      await window.electronAPI.stopHost()
-    }
-
-    setState(initialState)
-    setPosts([])
-    setMessages([])
-
-    // Re-check tailscale status
-    const status = await window.electronAPI.getTailscaleStatus()
-    setState((prev) => ({ ...prev, tailscaleStatus: status }))
   }
 
   const handleToggleFunnel = async () => {
