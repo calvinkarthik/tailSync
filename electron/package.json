@@ -2,7 +2,7 @@
   "name": "tailoverlay",
   "version": "1.0.0",
   "description": "Cross-platform desktop overlay for Tailscale workspace sharing",
-  "main": "dist/main/index.js",
+  "main": "dist/main/main/index.js",
   "scripts": {
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
     "dev:main": "tsc -p tsconfig.main.json --watch",
