@@ -50,6 +50,7 @@ export default function App() {
   const [posts, setPosts] = useState<Post[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [ws, setWs] = useState<WebSocket | null>(null)
+  const [hostWs, setHostWs] = useState<WebSocket | null>(null)
 
   // Check Tailscale status on mount and periodically
   useEffect(() => {
@@ -90,6 +91,20 @@ export default function App() {
         connectionStatus: "connected",
       }))
       setIdentity(result.identity)
+
+      // Subscribe to local host WebSocket so the host receives guest chat/posts
+      const websocket = new WebSocket("ws://127.0.0.1:4173/ws")
+      websocket.onmessage = (event) => {
+        const message = JSON.parse(event.data)
+        if (message.type === "chat") {
+          setMessages((prev) => [...prev, message.data])
+        } else if (message.type === "post:new") {
+          setPosts((prev) => [message.data, ...prev])
+        }
+      }
+      websocket.onclose = () => setHostWs(null)
+      websocket.onerror = () => setHostWs(null)
+      setHostWs(websocket)
     } catch (err: any) {
       setState((prev) => ({
         ...prev,
@@ -177,6 +192,11 @@ export default function App() {
       setWs(null)
     }
 
+    if (hostWs) {
+      hostWs.close()
+      setHostWs(null)
+    }
+
     if (state.mode === "host") {
       await window.electronAPI.stopHost()
     }
@@ -233,7 +253,7 @@ export default function App() {
 
       const data = await response.json()
 
-      if (state.mode === "host") {
+      if (state.mode === "host" && (!hostWs || hostWs.readyState !== WebSocket.OPEN)) {
         setPosts((prev) => [data.post, ...prev])
       }
     } catch (err) {
@@ -250,7 +270,10 @@ export default function App() {
           body: JSON.stringify({ text, identity }),
         })
         const data = await response.json()
-        setMessages((prev) => [...prev, data.message])
+        if (!hostWs || hostWs.readyState !== WebSocket.OPEN) {
+          // If WebSocket isn't connected, append manually; otherwise rely on broadcast to avoid duplicates
+          setMessages((prev) => [...prev, data.message])
+        }
       } else if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "chat", text, identity }))
       }
@@ -275,7 +298,7 @@ export default function App() {
 
       const data = await response.json()
 
-      if (state.mode === "host") {
+      if (state.mode === "host" && (!hostWs || hostWs.readyState !== WebSocket.OPEN)) {
         setPosts((prev) => [data.post, ...prev])
       }
     } catch (err) {
