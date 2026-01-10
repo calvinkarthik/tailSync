@@ -12,13 +12,16 @@ class TailscaleManager {
         try {
             const { stdout } = await execAsync("tailscale status --json");
             const status = JSON.parse(stdout);
+            const tailscaleIPs = status.Self?.TailscaleIPs || [];
+            // Prefer IPv4 (100.x) address for peer connections
+            const ipv4 = tailscaleIPs.find((ip) => ip.includes("."));
             const result = {
                 installed: true,
                 running: true,
                 loggedIn: status.BackendState === "Running",
                 deviceName: status.Self?.HostName || null,
                 tailnetName: status.MagicDNSSuffix || null,
-                selfIP: status.Self?.TailscaleIPs?.[0] || null,
+                selfIP: ipv4 || tailscaleIPs[0] || null,
                 userEmail: status.Self?.UserID ? await this.getUserEmail(status.Self.UserID) : null,
             };
             this.cachedStatus = result;

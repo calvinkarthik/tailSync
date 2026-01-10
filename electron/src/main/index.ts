@@ -76,9 +76,11 @@ ipcMain.handle("start-host", async () => {
   await hostService.start()
 
   // Start Tailscale Serve
-  const tailnetUrl = await tailscaleManager.startServe(4173)
+  const magicDnsUrl = await tailscaleManager.startServe(4173)
+  const status = await tailscaleManager.getStatus()
+  const tailscaleIpUrl = status.selfIP ? `http://${status.selfIP}:4173` : magicDnsUrl
 
-  return { code, tailnetUrl, identity }
+  return { code, tailnetUrl: tailscaleIpUrl, identity }
 })
 
 ipcMain.handle("stop-host", async () => {

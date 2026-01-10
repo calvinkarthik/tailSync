@@ -26,6 +26,20 @@ export function ConnectionInfo({
 }: ConnectionInfoProps) {
   const [copied, setCopied] = useState<string | null>(null)
 
+  const formatTailnetDisplay = (url: string) => {
+    let cleaned = url.trim()
+    cleaned = cleaned.replace(/^https?:\/\//i, "")
+    cleaned = cleaned.replace(/:\d+$/, "")
+    // Drop any trailing path if present
+    const slashIndex = cleaned.indexOf("/")
+    if (slashIndex !== -1) {
+      cleaned = cleaned.slice(0, slashIndex)
+    }
+    return cleaned
+  }
+
+  const tailnetDisplay = formatTailnetDisplay(tailnetUrl)
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text)
     setCopied(label)
@@ -77,9 +91,9 @@ export function ConnectionInfo({
         <div className="glass-light rounded-xl p-3">
           <label className="text-xs text-muted-foreground mb-1 block">Tailnet URL</label>
           <div className="flex items-center gap-2">
-            <span className="flex-1 text-sm font-mono truncate">{tailnetUrl}</span>
+            <span className="flex-1 text-sm font-mono truncate">{tailnetDisplay}</span>
             <button
-              onClick={() => copyToClipboard(tailnetUrl, "url")}
+              onClick={() => copyToClipboard(tailnetDisplay, "url")}
               className="p-2 rounded-lg hover:bg-secondary transition-colors shrink-0"
             >
               {copied === "url" ? (

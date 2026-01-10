@@ -102,8 +102,10 @@ electron_1.ipcMain.handle("start-host", async () => {
     hostService = new host_service_1.HostService(code, identity);
     await hostService.start();
     // Start Tailscale Serve
-    const tailnetUrl = await tailscaleManager.startServe(4173);
-    return { code, tailnetUrl, identity };
+    const magicDnsUrl = await tailscaleManager.startServe(4173);
+    const status = await tailscaleManager.getStatus();
+    const tailscaleIpUrl = status.selfIP ? `http://${status.selfIP}:4173` : magicDnsUrl;
+    return { code, tailnetUrl: tailscaleIpUrl, identity };
 });
 electron_1.ipcMain.handle("stop-host", async () => {
     if (hostService) {
