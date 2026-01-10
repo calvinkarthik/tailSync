@@ -37,7 +37,6 @@ export class HostService {
   private setupMiddleware() {
     this.app.use(express.json())
 
-    // Ensure workspace directory exists
     if (!fs.existsSync(WORKSPACE_DIR)) {
       fs.mkdirSync(WORKSPACE_DIR, { recursive: true })
     }
@@ -60,12 +59,10 @@ export class HostService {
 
     const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } })
 
-    // Create workspace (for initial verification)
     this.app.post("/api/create-workspace", (req, res) => {
       res.json({ code: this.code })
     })
 
-    // Join workspace
     this.app.post("/api/join", (req, res) => {
       const { code } = req.body
 
@@ -80,12 +77,10 @@ export class HostService {
       })
     })
 
-    // Get feed
     this.app.get("/api/feed", (req, res) => {
       res.json({ posts: this.posts })
     })
 
-    // Upload file/screenshot
     this.app.post("/api/upload", upload.single("file"), (req, res) => {
       const file = req.file
       if (!file) {
@@ -112,14 +107,10 @@ export class HostService {
       }
 
       this.posts.unshift(post)
-
-      // Broadcast to all connected clients
       this.broadcast({ type: "post:new", data: post })
-
       res.json({ post })
     })
 
-    // Download file
     this.app.get("/api/download/:filename", (req, res) => {
       const filePath = path.join(WORKSPACE_DIR, "uploads", req.params.filename)
       if (fs.existsSync(filePath)) {
@@ -129,7 +120,6 @@ export class HostService {
       }
     })
 
-    // Chat endpoint
     this.app.post("/api/chat", (req, res) => {
       const { text, identity } = req.body
 
@@ -141,10 +131,7 @@ export class HostService {
       }
 
       this.messages.push(message)
-
-      // Broadcast to all connected clients
       this.broadcast({ type: "chat", data: message })
-
       res.json({ message })
     })
   }
@@ -161,14 +148,10 @@ export class HostService {
   async start(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.server = createServer(this.app)
-
-      // Setup WebSocket
       this.wss = new WebSocketServer({ server: this.server })
 
       this.wss.on("connection", (ws) => {
         this.clients.add(ws)
-
-        // Broadcast join
         this.broadcast({
           type: "presence",
           data: { status: "joined", identity: this.hostIdentity },
@@ -177,7 +160,6 @@ export class HostService {
         ws.on("message", (data) => {
           try {
             const msg = JSON.parse(data.toString())
-
             if (msg.type === "chat") {
               const chatMessage: ChatMessage = {
                 id: uuidv4(),
@@ -185,7 +167,6 @@ export class HostService {
                 createdAt: new Date().toISOString(),
                 senderIdentity: msg.identity || this.hostIdentity,
               }
-
               this.messages.push(chatMessage)
               this.broadcast({ type: "chat", data: chatMessage })
             }
@@ -233,9 +214,7 @@ export class HostService {
   }
 
   startDemoLobby(port: number, tailnetUrl: string) {
-    // Import QRCode dynamically
     const QRCode = require("qrcode")
-
     const demoApp = express()
 
     demoApp.get("/demo", async (req, res) => {

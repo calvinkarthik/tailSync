@@ -1,4 +1,7 @@
-@import "tailwindcss";
+/* Converting from Tailwind v4 to v3 syntax */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: #0f172a;
@@ -19,28 +22,7 @@
   --ring: #38bdf8;
   --success: #22c55e;
   --warning: #f59e0b;
-}
-
-@theme inline {
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-ring: var(--ring);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
 }
 
 * {
