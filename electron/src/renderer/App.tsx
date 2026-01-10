@@ -119,8 +119,10 @@ export default function App() {
 
       const data = await response.json()
 
-      // Connect WebSocket
-      const wsUrl = tailnetUrl.replace("https://", "wss://") + "/ws"
+      // Connect WebSocket (support both HTTPS MagicDNS and HTTP 100.x IPs)
+      const wsUrl = tailnetUrl.startsWith("https://")
+        ? tailnetUrl.replace("https://", "wss://") + "/ws"
+        : tailnetUrl.replace("http://", "ws://") + "/ws"
       const websocket = new WebSocket(wsUrl)
 
       websocket.onopen = () => {

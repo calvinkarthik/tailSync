@@ -7,6 +7,7 @@ exports.HostService = void 0;
 const express_1 = __importDefault(require("express"));
 const http_1 = require("http");
 const ws_1 = require("ws");
+const cors_1 = __importDefault(require("cors"));
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
@@ -36,7 +37,16 @@ class HostService {
         this.setupRoutes();
     }
     setupMiddleware() {
+        this.app.use((0, cors_1.default)({
+            origin: "*",
+            methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            allowedHeaders: ["Content-Type", "Authorization"],
+        }));
         this.app.use(express_1.default.json());
+        this.app.use((req, res, next) => {
+            console.log(`[v0] ${req.method} ${req.path} from ${req.ip}`);
+            next();
+        });
         if (!fs_1.default.existsSync(WORKSPACE_DIR)) {
             fs_1.default.mkdirSync(WORKSPACE_DIR, { recursive: true });
         }
@@ -56,14 +66,22 @@ class HostService {
             },
         });
         const upload = (0, multer_1.default)({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+        this.app.get("/api/health", (req, res) => {
+            console.log("[v0] Health check received");
+            res.json({ status: "ok", code: this.code });
+        });
         this.app.post("/api/create-workspace", (req, res) => {
+            console.log("[v0] Create workspace request");
             res.json({ code: this.code });
         });
         this.app.post("/api/join", (req, res) => {
             const { code } = req.body;
+            console.log(`[v0] Join request with code: ${code}, expected: ${this.code}`);
             if (code !== this.code) {
+                console.log("[v0] Invalid code - rejecting");
                 return res.status(403).json({ error: "Invalid workspace code" });
             }
+            console.log("[v0] Join successful!");
             res.json({
                 workspace: this.workspace,
                 posts: this.posts,
@@ -134,7 +152,8 @@ class HostService {
         return new Promise((resolve, reject) => {
             this.server = (0, http_1.createServer)(this.app);
             this.wss = new ws_1.WebSocketServer({ server: this.server });
-            this.wss.on("connection", (ws) => {
+            this.wss.on("connection", (ws, req) => {
+                console.log(`[v0] WebSocket connection from ${req.socket.remoteAddress}`);
                 this.clients.add(ws);
                 this.broadcast({
                     type: "presence",
@@ -143,6 +162,7 @@ class HostService {
                 ws.on("message", (data) => {
                     try {
                         const msg = JSON.parse(data.toString());
+                        console.log("[v0] WebSocket message:", msg.type);
                         if (msg.type === "chat") {
                             const chatMessage = {
                                 id: (0, uuid_1.v4)(),
@@ -155,10 +175,11 @@ class HostService {
                         }
                     }
                     catch (err) {
-                        console.error("WebSocket message error:", err);
+                        console.error("[v0] WebSocket message error:", err);
                     }
                 });
                 ws.on("close", () => {
+                    console.log("[v0] WebSocket disconnected");
                     this.clients.delete(ws);
                     this.broadcast({
                         type: "presence",
@@ -166,11 +187,25 @@ class HostService {
                     });
                 });
             });
-            this.server.listen(4173, "127.0.0.1", () => {
-                console.log("Host service running on http://127.0.0.1:4173");
+            const os = require("os");
+            const interfaces = os.networkInterfaces();
+            console.log("[v0] Available network interfaces:");
+            Object.keys(interfaces).forEach((name) => {
+                interfaces[name]?.forEach((iface) => {
+                    if (iface.family === "IPv4" && !iface.internal) {
+                        console.log(`[v0]   ${name}: ${iface.address}`);
+                    }
+                });
+            });
+            this.server.listen(4173, "0.0.0.0", () => {
+                console.log("[v0] Host service running on http://0.0.0.0:4173");
+                console.log("[v0] Other devices can connect via your Tailscale IP on port 4173");
                 resolve();
             });
-            this.server.on("error", reject);
+            this.server.on("error", (err) => {
+                console.error("[v0] Server error:", err);
+                reject(err);
+            });
         });
     }
     async stop() {
@@ -286,7 +321,7 @@ class HostService {
         <body>
           <div class="card">
             <div class="logo">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0f172a" strokeWidth="2">
                 <path d="M12 2L2 7l10 5 10-5-10-5z"/>
                 <path d="M2 17l10 5 10-5"/>
                 <path d="M2 12l10 5 10-5"/>
@@ -306,8 +341,8 @@ class HostService {
       `);
         });
         this.demoServer = (0, http_1.createServer)(demoApp);
-        this.demoServer.listen(port, "127.0.0.1", () => {
-            console.log(`Demo lobby running on http://127.0.0.1:${port}/demo`);
+        this.demoServer.listen(port, "0.0.0.0", () => {
+            console.log(`Demo lobby running on http://0.0.0.0:${port}/demo`);
         });
     }
     stopDemoLobby() {
