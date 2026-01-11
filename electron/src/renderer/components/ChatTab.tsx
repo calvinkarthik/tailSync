@@ -87,7 +87,7 @@ export function ChatTab({ messages, identity, onSendMessage }: ChatTabProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 px-3 py-2 rounded-xl chat-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/50 text-sm"
+            className="flex-1 px-3 py-2 rounded-xl chat-input border border-border text-foreground placeholder:text-muted-foreground focus:outline-none text-sm"
           />
           <button
             type="submit"

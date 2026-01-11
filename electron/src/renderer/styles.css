@@ -12,7 +12,7 @@
   --card-foreground: #ffffff;
   --muted: #0e0e18;
   --muted-foreground: #b7b7c7;
-  --primary: #4310a7;
+  --primary: #5b2ad6;
   --primary-foreground: #ffffff;
   --secondary: #0e0e18;
   --secondary-foreground: #ffffff;
@@ -108,6 +108,11 @@ body {
   border: 1px solid rgba(91, 42, 214, 0.28);
 }
 
+.upload-hover-purple:hover {
+  background: rgba(91, 42, 214, 0.28);
+  color: var(--accent);
+}
+
 .logo-glow {
   filter: drop-shadow(0 0 10px rgba(91, 42, 214, 0.65)) drop-shadow(0 0 26px rgba(91, 42, 214, 0.45))
     drop-shadow(0 0 40px rgba(91, 42, 214, 0.3));
@@ -194,5 +199,15 @@ body {
 
 .chat-input {
   background: #0a0a14;
+}
+
+.chat-input:hover {
+  border-color: #5b2ad6;
+}
+
+.chat-input:focus,
+.chat-input:focus-visible {
+  border-color: #5b2ad6;
+  box-shadow: 0 0 0 2px rgba(91, 42, 214, 0.5);
 }
 
