@@ -11,17 +11,20 @@ class TailscaleManager {
         try {
             const { stdout } = await execAsync("tailscale status --json");
             const status = JSON.parse(stdout);
+            const backendState = status.BackendState || "";
+            const isRunning = backendState !== "Stopped";
+            const isLoggedIn = backendState === "Running" && !!status.Self?.UserID;
             const tailscaleIPs = status.Self?.TailscaleIPs || [];
             // Prefer IPv4 (100.x) address for peer connections
             const ipv4 = tailscaleIPs.find((ip) => ip.includes("."));
             const result = {
                 installed: true,
-                running: true,
-                loggedIn: status.BackendState === "Running",
-                deviceName: status.Self?.HostName || null,
-                tailnetName: status.MagicDNSSuffix || null,
-                selfIP: ipv4 || tailscaleIPs[0] || null,
-                userEmail: status.Self?.UserID ? await this.getUserEmail(status.Self.UserID) : null,
+                running: isRunning,
+                loggedIn: isLoggedIn,
+                deviceName: isLoggedIn ? status.Self?.HostName || null : null,
+                tailnetName: isLoggedIn ? status.MagicDNSSuffix || null : null,
+                selfIP: isLoggedIn ? ipv4 || tailscaleIPs[0] || null : null,
+                userEmail: isLoggedIn && status.Self?.UserID ? await this.getUserEmail(status.Self.UserID) : null,
             };
             this.cachedStatus = result;
             return result;

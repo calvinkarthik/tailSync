@@ -20,7 +20,7 @@ export function TailscaleStatusPanel({ status }: TailscaleStatusPanelProps) {
       actionLabel: "Launch",
     },
     {
-      label: "Logged In",
+      label: status.loggedIn ? "Logged In" : "Logged Out",
       ok: status.loggedIn,
     },
   ]
