@@ -25,11 +25,34 @@ let isQuitting = false
 let notchShouldBeVisible = false
 
 const GLOBAL_HOTKEY = "Control+Shift+Space"
-const trayIcon = nativeImage.createFromDataURL(
+const isDev = process.env.NODE_ENV === "development" || !app.isPackaged
+const trayFallbackIcon = nativeImage.createFromDataURL(
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAALklEQVR42u3OIQEAAAgDsFchLbFPDMzE/DLbfoqAgICAgICAgICAgICAgMB34ABtOJiX/H8dCQAAAABJRU5ErkJggg==",
 )
 
-const isDev = process.env.NODE_ENV === "development" || !app.isPackaged
+const getAppIconPath = () => {
+  if (process.platform === "win32") {
+    return isDev
+      ? path.join(app.getAppPath(), "build", "icon.ico")
+      : path.join(process.resourcesPath, "build", "icon.ico")
+  }
+  return isDev
+    ? path.join(app.getAppPath(), "build", "icon-512.png")
+    : path.join(process.resourcesPath, "build", "icon-512.png")
+}
+
+const getAppIcon = () => {
+  const icon = nativeImage.createFromPath(getAppIconPath())
+  return icon.isEmpty() ? trayFallbackIcon : icon
+}
+
+const getTrayIcon = () => {
+  const iconPath = isDev
+    ? path.join(app.getAppPath(), "tailSync-Regular.png")
+    : path.join(process.resourcesPath, "tailSync-Regular.png")
+  const image = nativeImage.createFromPath(iconPath)
+  return image.isEmpty() ? trayFallbackIcon : image
+}
 
 function createWindow() {
   if (mainWindow) {
@@ -52,6 +75,7 @@ function createWindow() {
     alwaysOnTop: true,
     resizable: false,
     skipTaskbar: false,
+    icon: getAppIcon(),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -196,7 +220,7 @@ function toggleWindow() {
 }
 
 function createTray() {
-  tray = new Tray(trayIcon)
+  tray = new Tray(getTrayIcon())
   tray.setToolTip("TailOverlay")
   const menu = Menu.buildFromTemplate([
     {
@@ -231,6 +255,9 @@ function registerGlobalHotkey() {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === "win32") {
+    app.setAppUserModelId("com.tailoverlay.app")
+  }
   createWindow()
   createNotchWindow()
   createTray()

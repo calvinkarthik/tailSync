@@ -49,8 +49,29 @@ let tray = null;
 let isQuitting = false;
 let notchShouldBeVisible = false;
 const GLOBAL_HOTKEY = "Control+Shift+Space";
-const trayIcon = electron_1.nativeImage.createFromDataURL("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAALklEQVR42u3OIQEAAAgDsFchLbFPDMzE/DLbfoqAgICAgICAgICAgICAgMB34ABtOJiX/H8dCQAAAABJRU5ErkJggg==");
 const isDev = process.env.NODE_ENV === "development" || !electron_1.app.isPackaged;
+const trayFallbackIcon = electron_1.nativeImage.createFromDataURL("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAALklEQVR42u3OIQEAAAgDsFchLbFPDMzE/DLbfoqAgICAgICAgICAgICAgMB34ABtOJiX/H8dCQAAAABJRU5ErkJggg==");
+const getAppIconPath = () => {
+    if (process.platform === "win32") {
+        return isDev
+            ? path_1.default.join(electron_1.app.getAppPath(), "build", "icon.ico")
+            : path_1.default.join(process.resourcesPath, "build", "icon.ico");
+    }
+    return isDev
+        ? path_1.default.join(electron_1.app.getAppPath(), "build", "icon-512.png")
+        : path_1.default.join(process.resourcesPath, "build", "icon-512.png");
+};
+const getAppIcon = () => {
+    const icon = electron_1.nativeImage.createFromPath(getAppIconPath());
+    return icon.isEmpty() ? trayFallbackIcon : icon;
+};
+const getTrayIcon = () => {
+    const iconPath = isDev
+        ? path_1.default.join(electron_1.app.getAppPath(), "tailSync-Regular.png")
+        : path_1.default.join(process.resourcesPath, "tailSync-Regular.png");
+    const image = electron_1.nativeImage.createFromPath(iconPath);
+    return image.isEmpty() ? trayFallbackIcon : image;
+};
 function createWindow() {
     if (mainWindow) {
         showWindow();
@@ -70,6 +91,7 @@ function createWindow() {
         alwaysOnTop: true,
         resizable: false,
         skipTaskbar: false,
+        icon: getAppIcon(),
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -196,7 +218,7 @@ function toggleWindow() {
     }
 }
 function createTray() {
-    tray = new electron_1.Tray(trayIcon);
+    tray = new electron_1.Tray(getTrayIcon());
     tray.setToolTip("TailOverlay");
     const menu = electron_1.Menu.buildFromTemplate([
         {
@@ -228,6 +250,9 @@ function registerGlobalHotkey() {
     }
 }
 electron_1.app.whenReady().then(() => {
+    if (process.platform === "win32") {
+        electron_1.app.setAppUserModelId("com.tailoverlay.app");
+    }
     createWindow();
     createNotchWindow();
     createTray();
