@@ -129,7 +129,7 @@ function createNotchWindow() {
     const primaryDisplay = electron_1.screen.getPrimaryDisplay();
     const { width: screenWidth, x: screenX, y: screenY } = primaryDisplay.workArea;
     const windowWidth = 420;
-    const windowHeight = 64;
+    const windowHeight = 80;
     notchWindow = new electron_1.BrowserWindow({
         width: windowWidth,
         height: windowHeight,

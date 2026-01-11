@@ -38,14 +38,14 @@ export function NotchToolbar({ activePanel, onTogglePanel, onCapture }: NotchToo
   }
 
   const panelButtonClass = (panel: Exclude<PanelId, null>) =>
-    `w-10 h-10 rounded-full flex items-center justify-center transition-colors notch-button ${
+    `w-11 h-11 rounded-full flex items-center justify-center transition-colors notch-button ${
       activePanel === panel ? "notch-button-active" : ""
     }`
 
   return (
     <>
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30">
-        <div className="glass-light notch-toolbar rounded-full px-3 py-2 shadow-lg flex items-center gap-2">
+      <div className="absolute left-1/2 -translate-x-1/2 z-30" style={{ top: "17px" }}>
+        <div className="glass-light notch-toolbar rounded-full px-3.5 py-2.5 shadow-lg flex items-center gap-2.5">
           <button
             onClick={() => onTogglePanel("feed")}
             className={panelButtonClass("feed")}
@@ -89,7 +89,7 @@ export function NotchToolbar({ activePanel, onTogglePanel, onCapture }: NotchToo
               setShowCaption(true)
             }}
             disabled={isCapturing}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors notch-button ${
+            className={`w-11 h-11 rounded-full flex items-center justify-center transition-colors notch-button ${
               isCapturing ? "opacity-60" : ""
             }`}
             title="Screenshot (click to snap, right-click for caption)"
