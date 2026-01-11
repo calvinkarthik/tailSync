@@ -41,7 +41,7 @@ export function ConnectionInfo({
   }
 
   return (
-    <div className="h-full flex flex-col p-4 overflow-y-auto">
+    <div className="h-full flex flex-col px-4 pb-4 pt-0 overflow-y-auto">
       {/* Status badge */}
       <div className="flex items-center gap-2 mb-4">
         <div className={`w-2 h-2 rounded-full animate-pulse ${mode === "host" ? "bg-success" : "bg-primary"}`} />

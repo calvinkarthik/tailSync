@@ -1,11 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { WelcomeScreen } from "./components/WelcomeScreen"
 import { HostView } from "./components/HostView"
 import { JoinView } from "./components/JoinView"
 import { TitleBar } from "./components/TitleBar"
-import { SnapButton } from "./components/SnapButton"
 import type { AppState, TailscaleStatus, Identity, Post, ChatMessage } from "../shared/types"
 
 declare global {
@@ -19,6 +18,16 @@ declare global {
       openTailscale: () => void
       minimizeWindow: () => void
       closeWindow: () => void
+      requestTogglePanel: (panel: "feed" | "chat" | "connection") => void
+      requestScreenshot: (caption?: string) => void
+      setPanelState: (panel: "feed" | "chat" | "connection" | null) => void
+      onPanelState: (callback: (panel: "feed" | "chat" | "connection" | null) => void) => void
+      offPanelState: (callback?: (panel: "feed" | "chat" | "connection" | null) => void) => void
+      onNotchTogglePanel: (callback: (panel: "feed" | "chat" | "connection") => void) => void
+      offNotchTogglePanel: (callback?: (panel: "feed" | "chat" | "connection") => void) => void
+      onNotchScreenshot: (callback: (caption?: string) => void) => void
+      offNotchScreenshot: (callback?: (caption?: string) => void) => void
+      setNotchVisible: (visible: boolean) => void
     }
   }
 }
@@ -47,6 +56,7 @@ export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [ws, setWs] = useState<WebSocket | null>(null)
   const [hostWs, setHostWs] = useState<WebSocket | null>(null)
+  const [activePanel, setActivePanel] = useState<"feed" | "chat" | "connection" | null>(null)
 
   // Check Tailscale status on mount and periodically
   useEffect(() => {
@@ -183,7 +193,10 @@ export default function App() {
   }
 
   const handleDisconnect = async () => {
+    let didReset = false
     const resetToWelcome = () => {
+      if (didReset) return
+      didReset = true
       setState({ ...initialState })
       setIdentity(null)
       setPosts([])
@@ -212,19 +225,22 @@ export default function App() {
       }
     } catch (err) {
       console.error("Disconnect error:", err)
+    } finally {
+      // Force-reset UI back to welcome immediately
       resetToWelcome()
-    }
+      setActivePanel(null)
 
-    // Refresh tailscale status in the background
-    try {
-      const status = await window.electronAPI.getTailscaleStatus()
-      setState((prev) => ({ ...prev, tailscaleStatus: status }))
-    } catch (err) {
-      console.error("Failed to refresh Tailscale status:", err)
+      // Refresh tailscale status in the background
+      try {
+        const status = await window.electronAPI.getTailscaleStatus()
+        setState((prev) => ({ ...prev, tailscaleStatus: status }))
+      } catch (err) {
+        console.error("Failed to refresh Tailscale status:", err)
+      }
     }
   }
 
-  const handleScreenshot = async (caption?: string) => {
+  const handleScreenshot = useCallback(async (caption?: string) => {
     try {
       const { buffer, filename } = await window.electronAPI.captureScreenshot()
 
@@ -259,7 +275,36 @@ export default function App() {
     } catch (err) {
       console.error("Screenshot error:", err)
     }
-  }
+  }, [identity, state.mode, state.tailnetUrl, hostWs])
+
+  useEffect(() => {
+    const handleTogglePanel = (panel: "feed" | "chat" | "connection") => {
+      setActivePanel((prev) => (prev === panel ? null : panel))
+    }
+    const handleNotchScreenshot = (caption?: string) => {
+      handleScreenshot(caption)
+    }
+
+    window.electronAPI.onNotchTogglePanel(handleTogglePanel)
+    window.electronAPI.onNotchScreenshot(handleNotchScreenshot)
+
+    return () => {
+      window.electronAPI.offNotchTogglePanel(handleTogglePanel)
+      window.electronAPI.offNotchScreenshot(handleNotchScreenshot)
+    }
+  }, [handleScreenshot])
+
+  useEffect(() => {
+    window.electronAPI.setPanelState(activePanel)
+  }, [activePanel])
+
+  useEffect(() => {
+    const shouldShow = state.mode === "host" || state.mode === "join"
+    window.electronAPI.setNotchVisible(shouldShow)
+    if (!shouldShow) {
+      setActivePanel(null)
+    }
+  }, [state.mode])
 
   const handleSendMessage = async (text: string) => {
     try {
@@ -331,6 +376,8 @@ export default function App() {
             onSendMessage={handleSendMessage}
             onUploadFile={handleUploadFile}
             onDisconnect={handleDisconnect}
+            activePanel={activePanel}
+            onClosePanel={() => setActivePanel(null)}
           />
         )}
 
@@ -344,11 +391,11 @@ export default function App() {
             onSendMessage={handleSendMessage}
             onUploadFile={handleUploadFile}
             onDisconnect={handleDisconnect}
+            activePanel={activePanel}
+            onClosePanel={() => setActivePanel(null)}
           />
         )}
       </div>
-
-      {(state.mode === "host" || state.mode === "join") && <SnapButton onCapture={handleScreenshot} />}
     </div>
   )
 }

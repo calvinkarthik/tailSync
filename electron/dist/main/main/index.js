@@ -41,6 +41,7 @@ const path_1 = __importDefault(require("path"));
 const host_service_1 = require("./host-service");
 const tailscale_manager_1 = require("./tailscale-manager");
 let mainWindow = null;
+let notchWindow = null;
 let hostService = null;
 let tailscaleManager = null;
 let tray = null;
@@ -96,6 +97,42 @@ function createWindow() {
     });
     mainWindow.on("show", () => {
         mainWindow?.setSkipTaskbar(false);
+    });
+}
+function createNotchWindow() {
+    if (notchWindow)
+        return;
+    const primaryDisplay = electron_1.screen.getPrimaryDisplay();
+    const { width: screenWidth, x: screenX, y: screenY } = primaryDisplay.workArea;
+    const windowWidth = 420;
+    const windowHeight = 64;
+    notchWindow = new electron_1.BrowserWindow({
+        width: windowWidth,
+        height: windowHeight,
+        x: Math.round(screenX + (screenWidth - windowWidth) / 2),
+        y: Math.round(screenY + 8),
+        frame: false,
+        transparent: true,
+        alwaysOnTop: true,
+        resizable: false,
+        skipTaskbar: true,
+        focusable: true,
+        hasShadow: false,
+        show: false,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path_1.default.join(__dirname, "preload.js"),
+        },
+    });
+    if (isDev) {
+        notchWindow.loadURL("http://localhost:5173/?window=notch");
+    }
+    else {
+        notchWindow.loadFile(path_1.default.join(__dirname, "../renderer/index.html"), { query: { window: "notch" } });
+    }
+    notchWindow.on("closed", () => {
+        notchWindow = null;
     });
 }
 function showWindow() {
@@ -162,6 +199,7 @@ function registerGlobalHotkey() {
 }
 electron_1.app.whenReady().then(() => {
     createWindow();
+    createNotchWindow();
     createTray();
     registerGlobalHotkey();
 });
@@ -179,6 +217,7 @@ electron_1.app.on("before-quit", () => {
 electron_1.app.on("will-quit", () => {
     electron_1.globalShortcut.unregisterAll();
     tray?.destroy();
+    notchWindow?.destroy();
 });
 // IPC Handlers
 electron_1.ipcMain.handle("get-tailscale-status", async () => {
@@ -245,4 +284,26 @@ electron_1.ipcMain.on("minimize-window", () => {
 });
 electron_1.ipcMain.on("close-window", () => {
     mainWindow?.close();
+});
+electron_1.ipcMain.on("set-notch-visible", (_event, visible) => {
+    if (!notchWindow) {
+        createNotchWindow();
+    }
+    if (!notchWindow)
+        return;
+    if (visible) {
+        notchWindow.show();
+    }
+    else {
+        notchWindow.hide();
+    }
+});
+electron_1.ipcMain.on("request-toggle-panel", (_event, panel) => {
+    mainWindow?.webContents.send("notch-toggle-panel", panel);
+});
+electron_1.ipcMain.on("request-screenshot", (_event, caption) => {
+    mainWindow?.webContents.send("notch-screenshot", caption);
+});
+electron_1.ipcMain.on("panel-state", (_event, panel) => {
+    notchWindow?.webContents.send("panel-state", panel);
 });
