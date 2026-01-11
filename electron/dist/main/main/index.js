@@ -47,6 +47,7 @@ let hostService = null;
 let tailscaleManager = null;
 let tray = null;
 let isQuitting = false;
+let notchShouldBeVisible = false;
 const GLOBAL_HOTKEY = "Control+Shift+Space";
 const trayIcon = electron_1.nativeImage.createFromDataURL("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAALklEQVR42u3OIQEAAAgDsFchLbFPDMzE/DLbfoqAgICAgICAgICAgICAgMB34ABtOJiX/H8dCQAAAABJRU5ErkJggg==");
 const isDev = process.env.NODE_ENV === "development" || !electron_1.app.isPackaged;
@@ -164,12 +165,23 @@ function showWindow() {
     mainWindow.setSkipTaskbar(false);
     mainWindow.show();
     mainWindow.focus();
+    // Keep notch visibility in sync with the main window
+    if (notchWindow) {
+        if (notchShouldBeVisible) {
+            notchWindow.show();
+        }
+        else {
+            notchWindow.hide();
+        }
+    }
 }
 function hideWindow() {
     if (!mainWindow)
         return;
     mainWindow.hide();
     mainWindow.setSkipTaskbar(true);
+    // Hide the notch whenever the main window hides (e.g., screenshot or hotkey)
+    notchWindow?.hide();
 }
 function toggleWindow() {
     if (!mainWindow) {
@@ -353,12 +365,14 @@ async function captureWithSnippingTool() {
     return sources[0].thumbnail;
 }
 electron_1.ipcMain.on("set-notch-visible", (_event, visible) => {
+    notchShouldBeVisible = visible;
     if (!notchWindow) {
         createNotchWindow();
     }
     if (!notchWindow)
         return;
-    if (visible) {
+    // Only show the notch if the main window is visible; otherwise keep it hidden
+    if (visible && mainWindow?.isVisible()) {
         notchWindow.show();
     }
     else {

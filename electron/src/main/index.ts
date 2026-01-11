@@ -22,6 +22,7 @@ let hostService: HostService | null = null
 let tailscaleManager: TailscaleManager | null = null
 let tray: Tray | null = null
 let isQuitting = false
+let notchShouldBeVisible = false
 
 const GLOBAL_HOTKEY = "Control+Shift+Space"
 const trayIcon = nativeImage.createFromDataURL(
@@ -162,12 +163,23 @@ function showWindow() {
   mainWindow.setSkipTaskbar(false)
   mainWindow.show()
   mainWindow.focus()
+
+  // Keep notch visibility in sync with the main window
+  if (notchWindow) {
+    if (notchShouldBeVisible) {
+      notchWindow.show()
+    } else {
+      notchWindow.hide()
+    }
+  }
 }
 
 function hideWindow() {
   if (!mainWindow) return
   mainWindow.hide()
   mainWindow.setSkipTaskbar(true)
+  // Hide the notch whenever the main window hides (e.g., screenshot or hotkey)
+  notchWindow?.hide()
 }
 
 function toggleWindow() {
@@ -373,11 +385,14 @@ async function captureWithSnippingTool(): Promise<NativeImage> {
 }
 
 ipcMain.on("set-notch-visible", (_event, visible: boolean) => {
+  notchShouldBeVisible = visible
   if (!notchWindow) {
     createNotchWindow()
   }
   if (!notchWindow) return
-  if (visible) {
+
+  // Only show the notch if the main window is visible; otherwise keep it hidden
+  if (visible && mainWindow?.isVisible()) {
     notchWindow.show()
   } else {
     notchWindow.hide()
