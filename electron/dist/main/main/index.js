@@ -43,8 +43,16 @@ const tailscale_manager_1 = require("./tailscale-manager");
 let mainWindow = null;
 let hostService = null;
 let tailscaleManager = null;
+let tray = null;
+let isQuitting = false;
+const GLOBAL_HOTKEY = "Control+Shift+Space";
+const trayIcon = electron_1.nativeImage.createFromDataURL("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAALklEQVR42u3OIQEAAAgDsFchLbFPDMzE/DLbfoqAgICAgICAgICAgICAgMB34ABtOJiX/H8dCQAAAABJRU5ErkJggg==");
 const isDev = process.env.NODE_ENV === "development" || !electron_1.app.isPackaged;
 function createWindow() {
+    if (mainWindow) {
+        showWindow();
+        return;
+    }
     const primaryDisplay = electron_1.screen.getPrimaryDisplay();
     const { width: screenWidth } = primaryDisplay.workAreaSize;
     mainWindow = new electron_1.BrowserWindow({
@@ -71,17 +79,104 @@ function createWindow() {
         mainWindow.loadFile(path_1.default.join(__dirname, "../renderer/index.html"));
     }
     tailscaleManager = new tailscale_manager_1.TailscaleManager();
+    mainWindow.on("close", (event) => {
+        if (!isQuitting) {
+            event.preventDefault();
+            hideWindow();
+        }
+        else {
+            mainWindow = null;
+        }
+    });
+    mainWindow.on("minimize", (event) => {
+        event.preventDefault();
+        hideWindow();
+    });
+    mainWindow.on("show", () => {
+        mainWindow?.setSkipTaskbar(false);
+    });
 }
-electron_1.app.whenReady().then(createWindow);
+function showWindow() {
+    if (!mainWindow) {
+        createWindow();
+        return;
+    }
+    if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+    }
+    mainWindow.setSkipTaskbar(false);
+    mainWindow.show();
+    mainWindow.focus();
+}
+function hideWindow() {
+    if (!mainWindow)
+        return;
+    mainWindow.hide();
+    mainWindow.setSkipTaskbar(true);
+}
+function toggleWindow() {
+    if (!mainWindow) {
+        createWindow();
+        return;
+    }
+    if (mainWindow.isVisible()) {
+        hideWindow();
+    }
+    else {
+        showWindow();
+    }
+}
+function createTray() {
+    tray = new electron_1.Tray(trayIcon);
+    tray.setToolTip("TailOverlay");
+    const menu = electron_1.Menu.buildFromTemplate([
+        {
+            label: "Open",
+            click: showWindow,
+        },
+        {
+            label: "Hide",
+            click: hideWindow,
+        },
+        { type: "separator" },
+        {
+            label: "Quit",
+            click: () => {
+                isQuitting = true;
+                electron_1.app.quit();
+            },
+        },
+    ]);
+    tray.setContextMenu(menu);
+    tray.on("click", showWindow);
+}
+function registerGlobalHotkey() {
+    const registered = electron_1.globalShortcut.register(GLOBAL_HOTKEY, () => {
+        toggleWindow();
+    });
+    if (!registered) {
+        console.warn(`Global hotkey ${GLOBAL_HOTKEY} failed to register`);
+    }
+}
+electron_1.app.whenReady().then(() => {
+    createWindow();
+    createTray();
+    registerGlobalHotkey();
+});
 electron_1.app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") {
+    if (process.platform !== "darwin" && isQuitting) {
         electron_1.app.quit();
     }
 });
 electron_1.app.on("activate", () => {
-    if (electron_1.BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-    }
+    showWindow();
+});
+electron_1.app.on("before-quit", () => {
+    isQuitting = true;
+});
+electron_1.app.on("will-quit", () => {
+    electron_1.globalShortcut.unregisterAll();
+    tray?.destroy();
 });
 // IPC Handlers
 electron_1.ipcMain.handle("get-tailscale-status", async () => {

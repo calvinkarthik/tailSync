@@ -1,4 +1,14 @@
-import { app, BrowserWindow, ipcMain, desktopCapturer, screen } from "electron"
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  desktopCapturer,
+  screen,
+  Tray,
+  Menu,
+  globalShortcut,
+  nativeImage,
+} from "electron"
 import path from "path"
 import { HostService } from "./host-service"
 import { TailscaleManager } from "./tailscale-manager"
@@ -6,10 +16,22 @@ import { TailscaleManager } from "./tailscale-manager"
 let mainWindow: BrowserWindow | null = null
 let hostService: HostService | null = null
 let tailscaleManager: TailscaleManager | null = null
+let tray: Tray | null = null
+let isQuitting = false
+
+const GLOBAL_HOTKEY = "Control+Shift+Space"
+const trayIcon = nativeImage.createFromDataURL(
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAALklEQVR42u3OIQEAAAgDsFchLbFPDMzE/DLbfoqAgICAgICAgICAgICAgMB34ABtOJiX/H8dCQAAAABJRU5ErkJggg==",
+)
 
 const isDev = process.env.NODE_ENV === "development" || !app.isPackaged
 
 function createWindow() {
+  if (mainWindow) {
+    showWindow()
+    return
+  }
+
   const primaryDisplay = screen.getPrimaryDisplay()
   const { width: screenWidth } = primaryDisplay.workAreaSize
 
@@ -38,20 +60,116 @@ function createWindow() {
   }
 
   tailscaleManager = new TailscaleManager()
+
+  mainWindow.on("close", (event) => {
+    if (!isQuitting) {
+      event.preventDefault()
+      hideWindow()
+    } else {
+      mainWindow = null
+    }
+  })
+
+  mainWindow.on("minimize", (event) => {
+    event.preventDefault()
+    hideWindow()
+  })
+
+  mainWindow.on("show", () => {
+    mainWindow?.setSkipTaskbar(false)
+  })
 }
 
-app.whenReady().then(createWindow)
+function showWindow() {
+  if (!mainWindow) {
+    createWindow()
+    return
+  }
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore()
+  }
+  mainWindow.setSkipTaskbar(false)
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function hideWindow() {
+  if (!mainWindow) return
+  mainWindow.hide()
+  mainWindow.setSkipTaskbar(true)
+}
+
+function toggleWindow() {
+  if (!mainWindow) {
+    createWindow()
+    return
+  }
+
+  if (mainWindow.isVisible()) {
+    hideWindow()
+  } else {
+    showWindow()
+  }
+}
+
+function createTray() {
+  tray = new Tray(trayIcon)
+  tray.setToolTip("TailOverlay")
+  const menu = Menu.buildFromTemplate([
+    {
+      label: "Open",
+      click: showWindow,
+    },
+    {
+      label: "Hide",
+      click: hideWindow,
+    },
+    { type: "separator" },
+    {
+      label: "Quit",
+      click: () => {
+        isQuitting = true
+        app.quit()
+      },
+    },
+  ])
+  tray.setContextMenu(menu)
+  tray.on("click", showWindow)
+}
+
+function registerGlobalHotkey() {
+  const registered = globalShortcut.register(GLOBAL_HOTKEY, () => {
+    toggleWindow()
+  })
+
+  if (!registered) {
+    console.warn(`Global hotkey ${GLOBAL_HOTKEY} failed to register`)
+  }
+}
+
+app.whenReady().then(() => {
+  createWindow()
+  createTray()
+  registerGlobalHotkey()
+})
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
+  if (process.platform !== "darwin" && isQuitting) {
     app.quit()
   }
 })
 
 app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
-  }
+  showWindow()
+})
+
+app.on("before-quit", () => {
+  isQuitting = true
+})
+
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll()
+  tray?.destroy()
 })
 
 // IPC Handlers
