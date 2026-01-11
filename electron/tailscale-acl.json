@@ -1,0 +1,54 @@
+{
+  "ACLs": [
+    {
+      "action": "accept",
+      "src": [
+        "group:workspace-pair",
+        "group:admins"
+      ],
+      "dst": [
+        "tag:tailoverlay-host:4173"
+      ]
+    },
+    {
+      "action": "deny",
+      "src": [
+        "*"
+      ],
+      "dst": [
+        "*:4173"
+      ]
+    }
+  ],
+  "Groups": {
+    "workspace-pair": [
+      "device:Calvin",
+      "device:Remy-r"
+    ],
+    "admins": [
+      "calvin.g.karthik@gmail.com"
+    ]
+  },
+  "TagOwners": {
+    "tag:tailoverlay-host": [
+      "group:admins"
+    ]
+  },
+  "Tests": [
+    {
+      "src": "group:workspace-pair",
+      "dst": "tag:tailoverlay-host:4173",
+      "accept": true
+    },
+    {
+      "src": "group:admins",
+      "dst": "tag:tailoverlay-host:4173",
+      "accept": true
+    },
+    {
+      "src": "device:somebody-else",
+      "dst": "tag:tailoverlay-host:4173",
+      "accept": false
+    }
+  ]
+}
