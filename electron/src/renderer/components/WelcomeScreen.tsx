@@ -5,6 +5,7 @@ import { useState } from "react"
 import type { TailscaleStatus } from "../../shared/types"
 import { TailscaleStatusPanel } from "./TailscaleStatusPanel"
 import { SetupGuide } from "./DemoModeGuide"
+import logo from "../../../tailSync-IconW.svg"
 
 interface WelcomeScreenProps {
   tailscaleStatus: TailscaleStatus
@@ -53,62 +54,67 @@ export function WelcomeScreen({ tailscaleStatus, onStartHost, onJoin, error, isC
 
   return (
     <div className="h-full flex flex-col p-4 animate-fade-in">
-      <TailscaleStatusPanel status={tailscaleStatus} />
-
       {!joinMode ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4">
-          <div className="text-center mb-4">
-            <h2 className="text-xl font-semibold mb-1">Welcome</h2>
-            <p className="text-sm text-muted-foreground">Share your workspace securely over Tailscale</p>
+        <div className="flex-1 flex flex-col justify-between">
+          <div className="space-y-2 mt-6">
+            <div className="flex justify-center">
+              <img src={logo} alt="tailSync" className="w-52 h-auto logo-glow" />
+            </div>
+            <div className="text-center -mt-2">
+              <p className="text-sm text-muted-foreground">Share your workspace securely over Tailscale</p>
+            </div>
+
+            {error && (
+              <div className="w-full p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm animate-fade-in">
+                {error}
+              </div>
+            )}
+
+            <button
+              onClick={onStartHost}
+              disabled={!canConnect || isConnecting}
+              className="w-full py-3 px-4 rounded-xl bg-primary text-primary-foreground font-medium transition-colors hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isConnecting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
+                  Host Workspace
+                </>
+              )}
+            </button>
+
+            <button
+              onClick={() => setJoinMode(true)}
+              disabled={!canConnect}
+              className="w-full py-3 px-4 rounded-xl border border-border text-foreground font-medium transition-colors hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
+                <polyline points="10 17 15 12 10 7" />
+                <line x1="15" y1="12" x2="3" y2="12" />
+              </svg>
+              Join Workspace
+            </button>
           </div>
 
-          {error && (
-            <div className="w-full p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm animate-fade-in">
-              {error}
-            </div>
-          )}
-
-          <button
-            onClick={onStartHost}
-            disabled={!canConnect || isConnecting}
-            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground font-medium transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isConnecting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                Starting...
-              </>
-            ) : (
-              <>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                  <path d="M2 17l10 5 10-5" />
-                  <path d="M2 12l10 5 10-5" />
-                </svg>
-                Host Workspace
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={() => setJoinMode(true)}
-            disabled={!canConnect}
-            className="w-full py-3 px-4 rounded-xl bg-secondary text-secondary-foreground font-medium transition-all hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
-              <polyline points="10 17 15 12 10 7" />
-              <line x1="15" y1="12" x2="3" y2="12" />
-            </svg>
-            Join Workspace
-          </button>
-
-          <button
-            onClick={() => setShowSetupGuide(true)}
-            className="mt-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            View Tailscale Setup Guide
-          </button>
+          <div className="space-y-4 mb-0">
+            <TailscaleStatusPanel status={tailscaleStatus} />
+            <button
+              onClick={() => setShowSetupGuide(true)}
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              View Tailscale Setup Guide
+            </button>
+          </div>
         </div>
       ) : (
         <div className="flex-1 flex flex-col animate-fade-in">

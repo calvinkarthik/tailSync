@@ -1,28 +1,30 @@
+@import url("https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@300;400;500;600;700&display=swap");
+
 /* Converting from Tailwind v4 to v3 syntax */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #0f172a;
-  --foreground: #f8fafc;
-  --card: rgba(30, 41, 59, 0.8);
-  --card-foreground: #f8fafc;
-  --muted: #334155;
-  --muted-foreground: #94a3b8;
-  --primary: #38bdf8;
-  --primary-foreground: #0f172a;
-  --secondary: #1e293b;
-  --secondary-foreground: #f8fafc;
-  --accent: #818cf8;
-  --accent-foreground: #f8fafc;
+  --background: #05050a;
+  --foreground: #ffffff;
+  --card: rgba(14, 14, 24, 0.9);
+  --card-foreground: #ffffff;
+  --muted: #0e0e18;
+  --muted-foreground: #b7b7c7;
+  --primary: #4310a7;
+  --primary-foreground: #ffffff;
+  --secondary: #0e0e18;
+  --secondary-foreground: #ffffff;
+  --accent: #5b2ad6;
+  --accent-foreground: #ffffff;
   --destructive: #ef4444;
-  --destructive-foreground: #f8fafc;
-  --border: rgba(255, 255, 255, 0.1);
-  --ring: #38bdf8;
+  --destructive-foreground: #ffffff;
+  --border: #1d1d2b;
+  --ring: #5b2ad6;
   --success: #22c55e;
   --warning: #f59e0b;
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Lexend Deca", "Segoe UI", sans-serif;
 }
 
 * {
@@ -66,24 +68,44 @@ body {
 
 /* Glassmorphism effects */
 .glass {
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(5, 5, 10, 0.9);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
 }
 
 .glass-light {
-  background: rgba(30, 41, 59, 0.6);
+  background: rgba(14, 14, 24, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
 }
 
 .glass-panel {
-  background: rgba(30, 41, 59, 0.2);
+  background: rgba(14, 14, 24, 0.2);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border);
+}
+
+.notch-button {
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.notch-button:hover {
+  color: var(--primary);
+  background: rgba(67, 16, 167, 0.15);
+}
+
+.notch-button-active {
+  color: var(--primary);
+  background: rgba(67, 16, 167, 0.2);
+}
+
+.logo-glow {
+  filter: drop-shadow(0 0 10px rgba(67, 16, 167, 0.65)) drop-shadow(0 0 26px rgba(67, 16, 167, 0.45))
+    drop-shadow(0 0 40px rgba(67, 16, 167, 0.3));
 }
 
 /* Animations */
