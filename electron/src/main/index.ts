@@ -8,8 +8,11 @@ import {
   Menu,
   globalShortcut,
   nativeImage,
+  clipboard,
+  type NativeImage,
 } from "electron"
 import path from "path"
+import { spawn } from "child_process"
 import { HostService } from "./host-service"
 import { TailscaleManager } from "./tailscale-manager"
 
@@ -257,19 +260,30 @@ ipcMain.handle("stop-host", async () => {
 })
 
 ipcMain.handle("capture-screenshot", async () => {
-  const sources = await desktopCapturer.getSources({
-    types: ["screen"],
-    thumbnailSize: { width: 1920, height: 1080 },
-  })
+  if (!mainWindow) {
+    throw new Error("Window not ready for screenshot")
+  }
 
-  if (sources.length === 0) throw new Error("No screen sources found")
+  const wasVisible = mainWindow.isVisible()
+  if (wasVisible) {
+    hideWindow()
+  }
 
-  const primarySource = sources[0]
-  const image = primarySource.thumbnail.toPNG()
-
-  return {
-    buffer: image.toString("base64"),
-    filename: `screenshot-${Date.now()}.png`,
+  try {
+    const image = await captureWithSnippingTool()
+    if (wasVisible) {
+      // Let the OS overlay finish before showing our window again
+      setTimeout(showWindow, 150)
+    }
+    return {
+      buffer: image.toPNG().toString("base64"),
+      filename: `screenshot-${Date.now()}.png`,
+    }
+  } catch (err) {
+    if (wasVisible) {
+      setTimeout(showWindow, 150)
+    }
+    throw err
   }
 })
 
@@ -292,6 +306,46 @@ ipcMain.on("minimize-window", () => {
 ipcMain.on("close-window", () => {
   mainWindow?.close()
 })
+
+async function captureWithSnippingTool(): Promise<NativeImage> {
+  // Windows: trigger Snipping Tool overlay so the user can select a region; image ends up on the clipboard.
+  if (process.platform === "win32") {
+    const before = clipboard.readImage()
+    const beforeData = before.isEmpty() ? null : before.toDataURL()
+
+    spawn("explorer.exe", ["ms-screenclip:"], {
+      windowsHide: true,
+      stdio: "ignore",
+    })
+
+    return new Promise((resolve, reject) => {
+      const start = Date.now()
+      const timeoutMs = 45000
+      const poll = setInterval(() => {
+        const img = clipboard.readImage()
+        if (!img.isEmpty()) {
+          const data = img.toDataURL()
+          if (!beforeData || data !== beforeData) {
+            clearInterval(poll)
+            resolve(img)
+          }
+        }
+        if (Date.now() - start > timeoutMs) {
+          clearInterval(poll)
+          reject(new Error("Screenshot canceled or timed out"))
+        }
+      }, 300)
+    })
+  }
+
+  // Non-Windows fallback: capture primary display.
+  const sources = await desktopCapturer.getSources({
+    types: ["screen"],
+    thumbnailSize: { width: 1920, height: 1080 },
+  })
+  if (sources.length === 0) throw new Error("No screen sources found")
+  return sources[0].thumbnail
+}
 
 ipcMain.on("set-notch-visible", (_event, visible: boolean) => {
   if (!notchWindow) {

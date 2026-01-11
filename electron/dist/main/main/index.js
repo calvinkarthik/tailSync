@@ -38,6 +38,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const path_1 = __importDefault(require("path"));
+const child_process_1 = require("child_process");
 const host_service_1 = require("./host-service");
 const tailscale_manager_1 = require("./tailscale-manager");
 let mainWindow = null;
@@ -253,18 +254,30 @@ electron_1.ipcMain.handle("stop-host", async () => {
     }
 });
 electron_1.ipcMain.handle("capture-screenshot", async () => {
-    const sources = await electron_1.desktopCapturer.getSources({
-        types: ["screen"],
-        thumbnailSize: { width: 1920, height: 1080 },
-    });
-    if (sources.length === 0)
-        throw new Error("No screen sources found");
-    const primarySource = sources[0];
-    const image = primarySource.thumbnail.toPNG();
-    return {
-        buffer: image.toString("base64"),
-        filename: `screenshot-${Date.now()}.png`,
-    };
+    if (!mainWindow) {
+        throw new Error("Window not ready for screenshot");
+    }
+    const wasVisible = mainWindow.isVisible();
+    if (wasVisible) {
+        hideWindow();
+    }
+    try {
+        const image = await captureWithSnippingTool();
+        if (wasVisible) {
+            // Let the OS overlay finish before showing our window again
+            setTimeout(showWindow, 150);
+        }
+        return {
+            buffer: image.toPNG().toString("base64"),
+            filename: `screenshot-${Date.now()}.png`,
+        };
+    }
+    catch (err) {
+        if (wasVisible) {
+            setTimeout(showWindow, 150);
+        }
+        throw err;
+    }
 });
 electron_1.ipcMain.handle("open-tailscale", async () => {
     const { shell } = await Promise.resolve().then(() => __importStar(require("electron")));
@@ -285,6 +298,43 @@ electron_1.ipcMain.on("minimize-window", () => {
 electron_1.ipcMain.on("close-window", () => {
     mainWindow?.close();
 });
+async function captureWithSnippingTool() {
+    // Windows: trigger Snipping Tool overlay so the user can select a region; image ends up on the clipboard.
+    if (process.platform === "win32") {
+        const before = electron_1.clipboard.readImage();
+        const beforeData = before.isEmpty() ? null : before.toDataURL();
+        (0, child_process_1.spawn)("explorer.exe", ["ms-screenclip:"], {
+            windowsHide: true,
+            stdio: "ignore",
+        });
+        return new Promise((resolve, reject) => {
+            const start = Date.now();
+            const timeoutMs = 45000;
+            const poll = setInterval(() => {
+                const img = electron_1.clipboard.readImage();
+                if (!img.isEmpty()) {
+                    const data = img.toDataURL();
+                    if (!beforeData || data !== beforeData) {
+                        clearInterval(poll);
+                        resolve(img);
+                    }
+                }
+                if (Date.now() - start > timeoutMs) {
+                    clearInterval(poll);
+                    reject(new Error("Screenshot canceled or timed out"));
+                }
+            }, 300);
+        });
+    }
+    // Non-Windows fallback: capture primary display.
+    const sources = await electron_1.desktopCapturer.getSources({
+        types: ["screen"],
+        thumbnailSize: { width: 1920, height: 1080 },
+    });
+    if (sources.length === 0)
+        throw new Error("No screen sources found");
+    return sources[0].thumbnail;
+}
 electron_1.ipcMain.on("set-notch-visible", (_event, visible) => {
     if (!notchWindow) {
         createNotchWindow();
