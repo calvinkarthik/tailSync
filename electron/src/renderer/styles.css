@@ -79,6 +79,13 @@ body {
   border: 1px solid var(--border);
 }
 
+.glass-panel {
+  background: rgba(30, 41, 59, 0.2);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+
 /* Animations */
 @keyframes fadeIn {
   from {

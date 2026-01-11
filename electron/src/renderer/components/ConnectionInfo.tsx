@@ -51,7 +51,7 @@ export function ConnectionInfo({
       {/* Connection details */}
       <div className="space-y-3">
         {mode === "host" && (
-          <div className="glass-light rounded-xl p-3">
+          <div className="glass-panel rounded-xl p-3">
             <label className="text-xs text-muted-foreground mb-1 block">Workspace Code</label>
             <div className="flex items-center justify-between">
               <span className="font-mono text-2xl font-bold tracking-widest">{workspace.code}</span>
@@ -82,7 +82,7 @@ export function ConnectionInfo({
           </div>
         )}
 
-        <div className="glass-light rounded-xl p-3">
+        <div className="glass-panel rounded-xl p-3">
           <label className="text-xs text-muted-foreground mb-1 block">Tailnet URL</label>
           <div className="flex items-center gap-2">
             <span className="flex-1 text-sm font-mono truncate">{tailnetDisplay}</span>
@@ -112,14 +112,14 @@ export function ConnectionInfo({
           </div>
         </div>
 
-        <div className="glass-light rounded-xl p-3">
+        <div className="glass-panel rounded-xl p-3">
           <label className="text-xs text-muted-foreground mb-1 block">Your Identity</label>
           <p className="text-sm font-medium">{identity.deviceName}</p>
           {identity.userEmail && <p className="text-xs text-muted-foreground">{identity.userEmail}</p>}
         </div>
 
         {mode === "host" && (
-          <div className="glass-light rounded-xl p-3">
+          <div className="glass-panel rounded-xl p-3">
             <label className="text-xs text-muted-foreground mb-1 block">Host</label>
             <p className="text-sm font-medium">{workspace.hostIdentity.deviceName}</p>
             {workspace.hostIdentity.userEmail && (

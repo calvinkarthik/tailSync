@@ -28,6 +28,7 @@ declare global {
       offNotchScreenshot: (callback?: (caption?: string) => void) => void
       setNotchVisible: (visible: boolean) => void
       moveWindowRight: () => void
+      moveWindowCenter: () => void
     }
   }
 }
@@ -309,6 +310,8 @@ export default function App() {
   useEffect(() => {
     if (state.mode === "host" || state.mode === "join") {
       window.electronAPI.moveWindowRight()
+    } else {
+      window.electronAPI.moveWindowCenter()
     }
   }, [state.mode])
 

@@ -92,7 +92,7 @@ export function FeedTab({ posts, tailnetUrl, onUploadFile }: FeedTabProps) {
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="w-full py-2.5 rounded-lg glass-light flex items-center justify-center gap-2 text-sm transition-colors hover:bg-primary/10 hover:text-primary"
+          className="w-full py-2.5 rounded-lg glass-panel flex items-center justify-center gap-2 text-sm transition-colors hover:bg-primary/10 hover:text-primary"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
@@ -124,7 +124,7 @@ export function FeedTab({ posts, tailnetUrl, onUploadFile }: FeedTabProps) {
           </div>
         ) : (
           posts.map((post) => (
-            <div key={post.id} className="glass-light rounded-xl p-3 animate-slide-in">
+            <div key={post.id} className="glass-panel rounded-xl p-3 animate-slide-in">
               {post.type === "screenshot" || isImage(post) ? (
                 <a
                   href={getDownloadUrl(post)}

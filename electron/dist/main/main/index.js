@@ -145,6 +145,14 @@ function positionMainWindowRight() {
     const margin = 20;
     mainWindow.setPosition(Math.round(screenX + screenWidth - windowBounds.width - margin), Math.round(screenY + (screenHeight - windowBounds.height) / 2));
 }
+function positionMainWindowCenter() {
+    if (!mainWindow)
+        return;
+    const primaryDisplay = electron_1.screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight, x: screenX, y: screenY } = primaryDisplay.workArea;
+    const windowBounds = mainWindow.getBounds();
+    mainWindow.setPosition(Math.round(screenX + (screenWidth - windowBounds.width) / 2), Math.round(screenY + (screenHeight - windowBounds.height) / 2));
+}
 function showWindow() {
     if (!mainWindow) {
         createWindow();
@@ -368,4 +376,7 @@ electron_1.ipcMain.on("panel-state", (_event, panel) => {
 });
 electron_1.ipcMain.on("move-window-right", () => {
     positionMainWindowRight();
+});
+electron_1.ipcMain.on("move-window-center", () => {
+    positionMainWindowCenter();
 });

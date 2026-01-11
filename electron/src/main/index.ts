@@ -138,6 +138,18 @@ function positionMainWindowRight() {
   )
 }
 
+function positionMainWindowCenter() {
+  if (!mainWindow) return
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: screenWidth, height: screenHeight, x: screenX, y: screenY } = primaryDisplay.workArea
+  const windowBounds = mainWindow.getBounds()
+
+  mainWindow.setPosition(
+    Math.round(screenX + (screenWidth - windowBounds.width) / 2),
+    Math.round(screenY + (screenHeight - windowBounds.height) / 2),
+  )
+}
+
 
 function showWindow() {
   if (!mainWindow) {
@@ -386,4 +398,8 @@ ipcMain.on("panel-state", (_event, panel: "feed" | "chat" | "connection" | null)
 
 ipcMain.on("move-window-right", () => {
   positionMainWindowRight()
+})
+
+ipcMain.on("move-window-center", () => {
+  positionMainWindowCenter()
 })

@@ -64,7 +64,7 @@ export function ChatTab({ messages, identity, onSendMessage }: ChatTabProps) {
                 className={`max-w-[85%] rounded-2xl px-3 py-2 ${
                   isOwnMessage(msg)
                     ? "bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-br-md"
-                    : "glass-light rounded-bl-md"
+                    : "glass-panel rounded-bl-md"
                 }`}
               >
                 <p className="text-sm break-words">{msg.text}</p>
