@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import type { Workspace, Identity, Post, ChatMessage } from "../../shared/types"
 import { WorkspaceTabs } from "./WorkspaceTabs"
 import { ConnectionInfo } from "./ConnectionInfo"
@@ -17,6 +16,8 @@ interface HostViewProps {
   onSendMessage: (text: string) => void
   onUploadFile: (file: File) => void
   onDisconnect: () => void
+  activePanel: "feed" | "chat" | "connection" | null
+  onClosePanel: () => void
 }
 
 export function HostView({
@@ -31,53 +32,59 @@ export function HostView({
   onSendMessage,
   onUploadFile,
   onDisconnect,
+  activePanel,
+  onClosePanel,
 }: HostViewProps) {
-  const [activeTab, setActiveTab] = useState<"feed" | "chat" | "connection">("connection")
+  const isPanelOpen = activePanel !== null
 
   return (
-    <div className="h-full flex flex-col animate-fade-in">
-      {/* Tab bar */}
-      <div className="flex border-b border-border">
-        {(["feed", "chat", "connection"] as const).map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`flex-1 py-2.5 text-sm font-medium transition-colors relative ${
-              activeTab === tab ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            {activeTab === tab && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary to-accent" />
+    <div className="h-full relative overflow-hidden animate-fade-in">
+      <div
+        className={`absolute top-0 right-0 h-full w-full transition-transform duration-200 ${
+          isPanelOpen ? "translate-x-0 pointer-events-auto" : "translate-x-full pointer-events-none"
+        }`}
+      >
+        <div className="h-full glass flex flex-col">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <span className="text-sm font-medium capitalize">{activePanel || ""}</span>
+            <button
+              onClick={onClosePanel}
+              className="p-1.5 rounded-md hover:bg-secondary transition-colors"
+              aria-label="Close panel"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-hidden">
+            {activePanel && activePanel !== "connection" && (
+              <WorkspaceTabs
+                activeTab={activePanel}
+                posts={posts}
+                messages={messages}
+                identity={identity}
+                tailnetUrl={tailnetUrl}
+                onSendMessage={onSendMessage}
+                onUploadFile={onUploadFile}
+              />
             )}
-          </button>
-        ))}
-      </div>
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-hidden">
-        <WorkspaceTabs
-          activeTab={activeTab}
-          posts={posts}
-          messages={messages}
-          identity={identity}
-          tailnetUrl={tailnetUrl}
-          onSendMessage={onSendMessage}
-          onUploadFile={onUploadFile}
-        />
-
-        {activeTab === "connection" && (
-          <ConnectionInfo
-            mode="host"
-            workspace={workspace}
-            tailnetUrl={tailnetUrl}
-            identity={identity}
-            funnelEnabled={funnelEnabled}
-            funnelUrl={funnelUrl}
-            onToggleFunnel={onToggleFunnel}
-            onDisconnect={onDisconnect}
-          />
-        )}
+            {activePanel === "connection" && (
+              <ConnectionInfo
+                mode="host"
+                workspace={workspace}
+                tailnetUrl={tailnetUrl}
+                identity={identity}
+                funnelEnabled={funnelEnabled}
+                funnelUrl={funnelUrl}
+                onToggleFunnel={onToggleFunnel}
+                onDisconnect={onDisconnect}
+              />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

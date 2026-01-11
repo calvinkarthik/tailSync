@@ -14,6 +14,7 @@ import { HostService } from "./host-service"
 import { TailscaleManager } from "./tailscale-manager"
 
 let mainWindow: BrowserWindow | null = null
+let notchWindow: BrowserWindow | null = null
 let hostService: HostService | null = null
 let tailscaleManager: TailscaleManager | null = null
 let tray: Tray | null = null
@@ -81,6 +82,46 @@ function createWindow() {
     mainWindow?.setSkipTaskbar(false)
   })
 }
+
+function createNotchWindow() {
+  if (notchWindow) return
+
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: screenWidth, x: screenX, y: screenY } = primaryDisplay.workArea
+  const windowWidth = 420
+  const windowHeight = 64
+
+  notchWindow = new BrowserWindow({
+    width: windowWidth,
+    height: windowHeight,
+    x: Math.round(screenX + (screenWidth - windowWidth) / 2),
+    y: Math.round(screenY + 8),
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    focusable: true,
+    hasShadow: false,
+    show: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, "preload.js"),
+    },
+  })
+
+  if (isDev) {
+    notchWindow.loadURL("http://localhost:5173/?window=notch")
+  } else {
+    notchWindow.loadFile(path.join(__dirname, "../renderer/index.html"), { query: { window: "notch" } })
+  }
+
+  notchWindow.on("closed", () => {
+    notchWindow = null
+  })
+}
+
 
 function showWindow() {
   if (!mainWindow) {
@@ -151,6 +192,7 @@ function registerGlobalHotkey() {
 
 app.whenReady().then(() => {
   createWindow()
+  createNotchWindow()
   createTray()
   registerGlobalHotkey()
 })
@@ -172,6 +214,7 @@ app.on("before-quit", () => {
 app.on("will-quit", () => {
   globalShortcut.unregisterAll()
   tray?.destroy()
+  notchWindow?.destroy()
 })
 
 // IPC Handlers
@@ -268,4 +311,28 @@ ipcMain.on("minimize-window", () => {
 
 ipcMain.on("close-window", () => {
   mainWindow?.close()
+})
+
+ipcMain.on("set-notch-visible", (_event, visible: boolean) => {
+  if (!notchWindow) {
+    createNotchWindow()
+  }
+  if (!notchWindow) return
+  if (visible) {
+    notchWindow.show()
+  } else {
+    notchWindow.hide()
+  }
+})
+
+ipcMain.on("request-toggle-panel", (_event, panel: "feed" | "chat" | "connection") => {
+  mainWindow?.webContents.send("notch-toggle-panel", panel)
+})
+
+ipcMain.on("request-screenshot", (_event, caption?: string) => {
+  mainWindow?.webContents.send("notch-screenshot", caption)
+})
+
+ipcMain.on("panel-state", (_event, panel: "feed" | "chat" | "connection" | null) => {
+  notchWindow?.webContents.send("panel-state", panel)
 })
