@@ -46,3 +46,16 @@ Electron, Node.js, TypeScript, React, Vite, Tailwind CSS, Express, WebSocket (ws
 ```bash
 cd electron
 npm install
+```
+
+### 2) Run the app (two terminals)
+
+Terminal A
+
+```npm run dev```
+
+Terminal B
+
+```npm start```
+
+For further tailscale launch instructions, you cna first launch tailSync and then press the setup guide at the bottom of the screen.
