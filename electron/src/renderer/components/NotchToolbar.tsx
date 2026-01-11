@@ -47,7 +47,7 @@ export function NotchToolbar({ activePanel, onTogglePanel, onCapture }: NotchToo
   return (
     <>
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30">
-        <div className="glass-light rounded-full px-2 py-1.5 shadow-lg border border-border flex items-center gap-1">
+        <div className="glass-light rounded-full px-2 py-1.5 shadow-lg border border-border flex items-center gap-2">
           <button
             onClick={() => onTogglePanel("feed")}
             className={panelButtonClass("feed")}
@@ -107,6 +107,7 @@ export function NotchToolbar({ activePanel, onTogglePanel, onCapture }: NotchToo
               </svg>
             )}
           </button>
+
         </div>
       </div>
 

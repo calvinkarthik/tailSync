@@ -125,6 +125,19 @@ function createNotchWindow() {
   })
 }
 
+function positionMainWindowRight() {
+  if (!mainWindow) return
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: screenWidth, height: screenHeight, x: screenX, y: screenY } = primaryDisplay.workArea
+  const windowBounds = mainWindow.getBounds()
+  const margin = 20
+
+  mainWindow.setPosition(
+    Math.round(screenX + screenWidth - windowBounds.width - margin),
+    Math.round(screenY + (screenHeight - windowBounds.height) / 2),
+  )
+}
+
 
 function showWindow() {
   if (!mainWindow) {
@@ -369,4 +382,8 @@ ipcMain.on("request-screenshot", (_event, caption?: string) => {
 
 ipcMain.on("panel-state", (_event, panel: "feed" | "chat" | "connection" | null) => {
   notchWindow?.webContents.send("panel-state", panel)
+})
+
+ipcMain.on("move-window-right", () => {
+  positionMainWindowRight()
 })

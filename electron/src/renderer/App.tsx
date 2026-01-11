@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react"
 import { WelcomeScreen } from "./components/WelcomeScreen"
 import { HostView } from "./components/HostView"
 import { JoinView } from "./components/JoinView"
-import { TitleBar } from "./components/TitleBar"
 import type { AppState, TailscaleStatus, Identity, Post, ChatMessage } from "../shared/types"
 
 declare global {
@@ -28,6 +27,7 @@ declare global {
       onNotchScreenshot: (callback: (caption?: string) => void) => void
       offNotchScreenshot: (callback?: (caption?: string) => void) => void
       setNotchVisible: (visible: boolean) => void
+      moveWindowRight: () => void
     }
   }
 }
@@ -306,6 +306,13 @@ export default function App() {
     }
   }, [state.mode])
 
+  useEffect(() => {
+    if (state.mode === "host" || state.mode === "join") {
+      window.electronAPI.moveWindowRight()
+    }
+  }, [state.mode])
+
+
   const handleSendMessage = async (text: string) => {
     try {
       if (state.mode === "host") {
@@ -353,8 +360,6 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col rounded-2xl overflow-hidden glass">
-      <TitleBar />
-
       <div className="flex-1 overflow-hidden">
         {state.mode === "welcome" && (
           <WelcomeScreen

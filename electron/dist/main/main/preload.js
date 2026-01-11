@@ -32,4 +32,5 @@ electron_1.contextBridge.exposeInMainWorld("electronAPI", {
         electron_1.ipcRenderer.removeAllListeners("notch-screenshot");
     },
     setNotchVisible: (visible) => electron_1.ipcRenderer.send("set-notch-visible", visible),
+    moveWindowRight: () => electron_1.ipcRenderer.send("move-window-right"),
 });

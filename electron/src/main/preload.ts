@@ -31,4 +31,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.removeAllListeners("notch-screenshot")
   },
   setNotchVisible: (visible: boolean) => ipcRenderer.send("set-notch-visible", visible),
+  moveWindowRight: () => ipcRenderer.send("move-window-right"),
 })
