@@ -58,6 +58,15 @@ export default function App() {
   const [ws, setWs] = useState<WebSocket | null>(null)
   const [hostWs, setHostWs] = useState<WebSocket | null>(null)
   const [activePanel, setActivePanel] = useState<"feed" | "chat" | "connection" | null>(null)
+  const isWorkspaceMode = state.mode === "host" || state.mode === "join"
+  const shouldShowWorkspacePanel = isWorkspaceMode && activePanel !== null
+  const containerClassName = [
+    "h-full flex flex-col rounded-2xl overflow-hidden transition-opacity duration-150",
+    state.mode === "welcome" || shouldShowWorkspacePanel ? "glass opacity-100" : "",
+    isWorkspaceMode && !shouldShowWorkspacePanel ? "opacity-0 pointer-events-none select-none" : "",
+  ]
+    .filter(Boolean)
+    .join(" ")
 
   // Check Tailscale status on mount and periodically
   useEffect(() => {
@@ -362,7 +371,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-full flex flex-col rounded-2xl overflow-hidden glass">
+    <div className={containerClassName}>
       <div className="flex-1 overflow-hidden">
         {state.mode === "welcome" && (
           <WelcomeScreen
@@ -374,7 +383,7 @@ export default function App() {
           />
         )}
 
-        {state.mode === "host" && (
+        {state.mode === "host" && shouldShowWorkspacePanel && (
           <HostView
             workspace={state.workspace!}
             tailnetUrl={state.tailnetUrl!}
@@ -389,7 +398,7 @@ export default function App() {
           />
         )}
 
-        {state.mode === "join" && (
+        {state.mode === "join" && shouldShowWorkspacePanel && (
           <JoinView
             workspace={state.workspace!}
             tailnetUrl={state.tailnetUrl!}
