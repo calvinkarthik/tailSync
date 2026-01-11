@@ -113,34 +113,35 @@ curl http://100.x.x.x:4173/api/health
 
 Should return: `{"status":"ok","code":"123456"}`
 
-## ACL Demo (Hackathon Requirement)
+## ACL + Identity Enforcement (Hackathon Requirement)
 
-This app is designed to demonstrate Tailscale ACL enforcement:
+The host service on **port 4173** is locked to a pair of devices and rejects everyone else:
 
-### Demo Steps
+- ACL policy file: `tailscale-acl.json` allows only `device:Calvin` and `device:Remy-r` to reach `tag:tailoverlay-host:4173`, denies all other sources on 4173, and lets `calvin.g.karthik@gmail.com` manage the tag.
+- App-level check: the host verifies the caller's Tailscale identity (via `tailscale status --json`) on `/api/join` and WebSocket connections and rejects requests from devices not in the allowlist.
 
-1. **Block Access**: In the [Tailscale admin console](https://login.tailscale.com/admin/acls), add an ACL rule that blocks the joiner's device from accessing port 4173 on the host
-2. **Attempt Join**: The joiner will see a friendly error: *"Blocked by Tailscale ACL or not on tailnet"*
-3. **Allow Access**: Update the ACL to permit access
-4. **Join Successfully**: Demonstrates that Tailscale ACLs control access to the workspace
+### Apply the ACL
 
-### Example ACL Rules
+1. Edit `tailscale-acl.json` with your real device names/emails if they differ.
+2. Tag the host device: `tailscale up --advertise-tags=tag:tailoverlay-host`.
+3. Apply the ACL in the Tailscale admin console or via the Admin API using `tailscale-acl.json`.
 
-```json
-// Block access
-{
-  "action": "deny",
-  "src": ["joiner-device"],
-  "dst": ["host-device:4173"]
-}
+### Configure allowed devices for the app check
 
-// Allow access
-{
-  "action": "accept",
-  "src": ["joiner-device"],
-  "dst": ["host-device:4173"]
-}
+Set the environment variable before starting Electron to keep the allowlist in sync with your ACL:
+
+```bash
+# comma-separated Tailscale device names
+set TS_ALLOWED_DEVICES=Calvin,Remy-r   # PowerShell
+# or export TS_ALLOWED_DEVICES=Calvin,Remy-r   # bash/zsh
 ```
+
+### Demo flow (two devices)
+
+1. With the ACL applied and host tagged, start the app on the host (device Calvin).
+2. Join from device Remy-r (allowed) → succeeds.
+3. To show enforcement, temporarily remove `device:Remy-r` from the ACL (or TS_ALLOWED_DEVICES) and re-apply → join fails with *"Blocked by Tailscale ACL or not allowed"*.
+4. Re-add `device:Remy-r` → join succeeds again.
 
 ## Identity
 

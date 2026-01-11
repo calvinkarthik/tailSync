@@ -12,7 +12,10 @@ const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const uuid_1 = require("uuid");
+const child_process_1 = require("child_process");
+const util_1 = require("util");
 const WORKSPACE_DIR = path_1.default.join(process.cwd(), "tailoverlay-workspace");
+const execAsync = (0, util_1.promisify)(child_process_1.exec);
 class HostService {
     app;
     server = null;
@@ -23,6 +26,7 @@ class HostService {
     posts = [];
     messages = [];
     clients = new Set();
+    allowedDevices;
     constructor(code, hostIdentity) {
         this.code = code;
         this.hostIdentity = hostIdentity;
@@ -31,6 +35,14 @@ class HostService {
             createdAt: new Date().toISOString(),
             hostIdentity,
         };
+        // Comma-separated list of allowed device names (match Tailscale device names).
+        const envAllow = process.env.TS_ALLOWED_DEVICES;
+        this.allowedDevices = envAllow
+            ? envAllow
+                .split(",")
+                .map((d) => d.trim().toLowerCase())
+                .filter(Boolean)
+            : ["calvin", "remy-r"];
         this.app = (0, express_1.default)();
         this.setupMiddleware();
         this.setupRoutes();
@@ -73,12 +85,26 @@ class HostService {
             console.log("[v0] Create workspace request");
             res.json({ code: this.code });
         });
-        this.app.post("/api/join", (req, res) => {
+        this.app.post("/api/join", async (req, res) => {
             const { code } = req.body;
-            console.log(`[v0] Join request with code: ${code}, expected: ${this.code}`);
+            const remoteIp = this.getClientIp(req);
+            const callerIdentity = await this.resolveTailscaleIdentity(remoteIp);
+            console.log(`[v0] Join request with code: ${code}, expected: ${this.code}, from ${remoteIp}`);
             if (code !== this.code) {
                 console.log("[v0] Invalid code - rejecting");
                 return res.status(403).json({ error: "Invalid workspace code" });
+            }
+            if (!callerIdentity) {
+                console.log("[v0] Join rejected - unknown Tailscale identity");
+                return res
+                    .status(403)
+                    .json({ error: "Not on tailnet or Tailscale identity unavailable. Ask host to grant access." });
+            }
+            if (!this.isAllowedDevice(callerIdentity.deviceName)) {
+                console.log(`[v0] Join rejected - device ${callerIdentity.deviceName} is not in allowed list: ${this.allowedDevices.join(", ")}`);
+                return res.status(403).json({
+                    error: `Blocked by Tailscale ACL or not allowed. Allowed devices: ${this.allowedDevices.join(", ")}`,
+                });
             }
             console.log("[v0] Join successful!");
             res.json({
@@ -147,16 +173,67 @@ class HostService {
             }
         });
     }
+    isAllowedDevice(deviceName) {
+        if (!deviceName)
+            return false;
+        return this.allowedDevices.includes(deviceName.toLowerCase());
+    }
+    getClientIp(req) {
+        const xfwd = req.headers["x-forwarded-for"] || "";
+        const raw = xfwd.split(",")[0].trim() || req.ip || "";
+        return raw.replace("::ffff:", "");
+    }
+    async resolveTailscaleIdentity(remoteIp) {
+        if (!remoteIp)
+            return null;
+        // Local requests (host machine) map to host identity.
+        if (["127.0.0.1", "::1", "localhost"].includes(remoteIp)) {
+            return this.hostIdentity;
+        }
+        try {
+            const { stdout } = await execAsync("tailscale status --json");
+            const status = JSON.parse(stdout);
+            // Check peers for matching Tailscale IP.
+            const peers = status?.Peer || {};
+            for (const peerId of Object.keys(peers)) {
+                const peer = peers[peerId];
+                const ips = peer.TailscaleIPs || [];
+                if (ips.includes(remoteIp)) {
+                    return {
+                        deviceName: peer.HostName || peer.Hostinfo?.Hostname || "unknown-device",
+                        userEmail: status?.User?.[peer.UserID]?.LoginName || null,
+                        hostname: peer.Hostinfo?.Hostname || peer.HostName || "unknown-device",
+                    };
+                }
+            }
+            // If no peer match but IP equals selfIP, return host identity.
+            const selfIPs = status?.Self?.TailscaleIPs || [];
+            if (selfIPs.includes(remoteIp)) {
+                return this.hostIdentity;
+            }
+        }
+        catch (err) {
+            console.error("[v0] Failed to resolve Tailscale identity:", err);
+        }
+        return null;
+    }
     async start() {
         return new Promise((resolve, reject) => {
             this.server = (0, http_1.createServer)(this.app);
             this.wss = new ws_1.WebSocketServer({ server: this.server });
-            this.wss.on("connection", (ws, req) => {
-                console.log(`[v0] WebSocket connection from ${req.socket.remoteAddress}`);
+            this.wss.on("connection", async (ws, req) => {
+                const remoteIp = (req.socket.remoteAddress || "").replace("::ffff:", "");
+                const callerIdentity = await this.resolveTailscaleIdentity(remoteIp);
+                if (!callerIdentity || !this.isAllowedDevice(callerIdentity.deviceName)) {
+                    console.log(`[v0] WebSocket rejected for ${remoteIp} (${callerIdentity?.deviceName || "unknown"}) - not allowed`);
+                    ws.close(1008, "Not allowed by Tailscale policy");
+                    return;
+                }
+                console.log(`[v0] WebSocket connection from ${remoteIp} (${callerIdentity.deviceName})`);
                 this.clients.add(ws);
                 this.broadcast({
                     type: "presence",
-                    data: { status: "joined", identity: this.hostIdentity },
+                    data: { status: "joined", identity: callerIdentity },
                 });
                 ws.on("message", (data) => {
                     try {

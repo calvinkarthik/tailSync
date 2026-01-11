@@ -22,8 +22,8 @@
   ],
   "Groups": {
     "workspace-pair": [
-      "device:Calvin",
-      "device:Remy-r"
+      "calvin",
+      "remy-R"
     ],
     "admins": [
       "calvin.g.karthik@gmail.com"
