@@ -54,12 +54,14 @@ function createWindow() {
         return;
     }
     const primaryDisplay = electron_1.screen.getPrimaryDisplay();
-    const { width: screenWidth } = primaryDisplay.workAreaSize;
+    const { width: screenWidth, height: screenHeight, x: screenX, y: screenY } = primaryDisplay.workArea;
+    const windowWidth = 420;
+    const windowHeight = 640;
     mainWindow = new electron_1.BrowserWindow({
-        width: 420,
-        height: 640,
-        x: screenWidth - 440,
-        y: 20,
+        width: windowWidth,
+        height: windowHeight,
+        x: Math.round(screenX + (screenWidth - windowWidth) / 2),
+        y: Math.round(screenY + (screenHeight - windowHeight) / 2),
         frame: false,
         transparent: true,
         alwaysOnTop: true,
