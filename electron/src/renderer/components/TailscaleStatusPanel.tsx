@@ -80,7 +80,7 @@ export function TailscaleStatusPanel({ status }: TailscaleStatusPanelProps) {
       {status.loggedIn && status.userEmail && (
         <div className="mt-3 pt-3 border-t border-border">
           <p className="text-xs text-muted-foreground">
-            Signed in as <span className="text-primary">{status.userEmail}</span>
+            Signed in as <span className="text-accent-soft">{status.userEmail}</span>
           </p>
           {status.deviceName && (
             <p className="text-xs text-muted-foreground mt-0.5">

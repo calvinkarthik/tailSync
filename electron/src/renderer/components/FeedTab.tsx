@@ -92,7 +92,7 @@ export function FeedTab({ posts, tailnetUrl, onUploadFile }: FeedTabProps) {
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="w-full py-2.5 rounded-lg glass-panel flex items-center justify-center gap-2 text-sm transition-colors hover:bg-primary/10 hover:text-primary"
+          className="w-full py-2.5 rounded-lg glass-panel flex items-center justify-center gap-2 text-sm transition-colors hover:bg-accent/10 hover:text-accent"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
@@ -138,19 +138,19 @@ export function FeedTab({ posts, tailnetUrl, onUploadFile }: FeedTabProps) {
                       alt={post.caption || post.filename || "Image"}
                       className="w-full h-40 object-cover group-hover:opacity-95"
                     />
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex items-center justify-center text-xs font-medium text-primary-foreground/90" style={{
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none flex items-center justify-center text-xs font-semibold text-white" style={{
                       background:
-                        "radial-gradient(circle at 20% 20%, rgba(56,189,248,0.25), transparent 32%), radial-gradient(circle at 80% 25%, rgba(56,189,248,0.22), transparent 35%), radial-gradient(circle at 50% 80%, rgba(56,189,248,0.22), transparent 32%), linear-gradient(135deg, rgba(56,189,248,0.08), rgba(56,189,248,0.12))",
+                        "radial-gradient(circle at 20% 20%, rgba(91,42,214,0.7), transparent 32%), radial-gradient(circle at 80% 25%, rgba(91,42,214,0.65), transparent 35%), radial-gradient(circle at 50% 80%, rgba(91,42,214,0.65), transparent 32%), linear-gradient(135deg, rgba(91,42,214,0.3), rgba(91,42,214,0.4))",
                     }}>
-                      <span className="px-3 py-1 rounded-full bg-primary/70 backdrop-blur-sm shadow-sm">Click to download</span>
+                      <span className="px-3 py-1 rounded-full bg-accent/90 backdrop-blur-sm shadow-sm ring-1 ring-white/40">Click to download</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium truncate group-hover:text-primary">{post.filename}</p>
+                      <p className="text-sm font-medium truncate group-hover:text-accent">{post.filename}</p>
                       <p className="text-xs text-muted-foreground">{formatSize(post.size)}</p>
                     </div>
-                    <span className="p-2 rounded-lg transition-colors group-hover:bg-primary/10 group-hover:text-primary shrink-0">
+                    <span className="p-2 rounded-lg transition-colors group-hover:bg-accent/10 group-hover:text-accent shrink-0">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
                         <polyline points="7 10 12 15 17 10" />
@@ -158,7 +158,7 @@ export function FeedTab({ posts, tailnetUrl, onUploadFile }: FeedTabProps) {
                       </svg>
                     </span>
                   </div>
-                  {post.caption && <p className="text-sm mt-1 group-hover:text-primary">{post.caption}</p>}
+                  {post.caption && <p className="text-sm mt-1 group-hover:text-accent">{post.caption}</p>}
                 </a>
               ) : (
                 <div className="flex items-center gap-3">

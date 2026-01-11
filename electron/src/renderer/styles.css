@@ -89,23 +89,28 @@ body {
 }
 
 .notch-button {
-  color: var(--muted-foreground);
+  color: #c9c9dd;
   background: transparent;
 }
 
 .notch-button:hover {
-  color: var(--primary);
-  background: rgba(67, 16, 167, 0.15);
+  color: var(--accent);
+  background: rgba(91, 42, 214, 0.28);
 }
 
 .notch-button-active {
-  color: var(--primary);
-  background: rgba(67, 16, 167, 0.2);
+  color: var(--accent);
+  background: rgba(91, 42, 214, 0.32);
+}
+
+.notch-toolbar {
+  background: rgba(32, 32, 48, 0.75);
+  border: 1px solid rgba(91, 42, 214, 0.28);
 }
 
 .logo-glow {
-  filter: drop-shadow(0 0 10px rgba(67, 16, 167, 0.65)) drop-shadow(0 0 26px rgba(67, 16, 167, 0.45))
-    drop-shadow(0 0 40px rgba(67, 16, 167, 0.3));
+  filter: drop-shadow(0 0 10px rgba(91, 42, 214, 0.65)) drop-shadow(0 0 26px rgba(91, 42, 214, 0.45))
+    drop-shadow(0 0 40px rgba(91, 42, 214, 0.3));
 }
 
 /* Animations */
@@ -161,3 +166,33 @@ body {
 .no-drag {
   -webkit-app-region: no-drag;
 }
+.btn-outline-purple {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  transition: border-color 200ms ease, box-shadow 200ms ease, color 200ms ease, background-color 200ms ease;
+}
+
+.btn-outline-purple:hover {
+  border-color: var(--accent);
+}
+
+.btn-outline-purple:focus-visible,
+.btn-outline-purple:active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(91, 42, 214, 0.5);
+}
+
+.text-accent-soft {
+  color: rgba(91, 42, 214, 0.75);
+}
+
+.chat-accent-bg {
+  background: rgba(91, 42, 214, 0.75);
+  color: var(--primary-foreground);
+}
+
+.chat-input {
+  background: #0a0a14;
+}
+

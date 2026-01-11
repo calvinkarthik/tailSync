@@ -38,21 +38,21 @@ export function NotchToolbar({ activePanel, onTogglePanel, onCapture }: NotchToo
   }
 
   const panelButtonClass = (panel: Exclude<PanelId, null>) =>
-    `w-9 h-9 rounded-full flex items-center justify-center transition-colors notch-button ${
+    `w-10 h-10 rounded-full flex items-center justify-center transition-colors notch-button ${
       activePanel === panel ? "notch-button-active" : ""
     }`
 
   return (
     <>
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30">
-        <div className="glass-light rounded-full px-2 py-1.5 shadow-lg border border-border flex items-center gap-2">
+        <div className="glass-light notch-toolbar rounded-full px-3 py-2 shadow-lg flex items-center gap-2">
           <button
             onClick={() => onTogglePanel("feed")}
             className={panelButtonClass("feed")}
             aria-pressed={activePanel === "feed"}
             title="Feed"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <circle cx="5" cy="6" r="1.5" />
               <circle cx="5" cy="12" r="1.5" />
               <circle cx="5" cy="18" r="1.5" />
@@ -67,7 +67,7 @@ export function NotchToolbar({ activePanel, onTogglePanel, onCapture }: NotchToo
             aria-pressed={activePanel === "chat"}
             title="Chat"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
             </svg>
           </button>
@@ -77,7 +77,7 @@ export function NotchToolbar({ activePanel, onTogglePanel, onCapture }: NotchToo
             aria-pressed={activePanel === "connection"}
             title="Connection"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M10 13a5 5 0 007.07 0l2.83-2.83a5 5 0 10-7.07-7.07L10 5" />
               <path d="M14 11a5 5 0 01-7.07 0L4.1 8.17a5 5 0 017.07-7.07L14 3" />
             </svg>
@@ -89,7 +89,7 @@ export function NotchToolbar({ activePanel, onTogglePanel, onCapture }: NotchToo
               setShowCaption(true)
             }}
             disabled={isCapturing}
-            className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors notch-button ${
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors notch-button ${
               isCapturing ? "opacity-60" : ""
             }`}
             title="Screenshot (click to snap, right-click for caption)"
@@ -97,7 +97,7 @@ export function NotchToolbar({ activePanel, onTogglePanel, onCapture }: NotchToo
             {isCapturing ? (
               <div className="w-4 h-4 border-2 border-muted-foreground/40 border-t-muted-foreground rounded-full animate-spin" />
             ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
                 <circle cx="12" cy="13" r="4" />
               </svg>
