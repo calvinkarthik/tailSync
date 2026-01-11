@@ -11,9 +11,6 @@ interface HostViewProps {
   identity: Identity
   posts: Post[]
   messages: ChatMessage[]
-  funnelEnabled: boolean
-  funnelUrl: string | null
-  onToggleFunnel: () => void
   onSendMessage: (text: string) => void
   onUploadFile: (file: File) => void
   onDisconnect: () => void
@@ -25,9 +22,6 @@ export function HostView({
   identity,
   posts,
   messages,
-  funnelEnabled,
-  funnelUrl,
-  onToggleFunnel,
   onSendMessage,
   onUploadFile,
   onDisconnect,
@@ -72,9 +66,6 @@ export function HostView({
             workspace={workspace}
             tailnetUrl={tailnetUrl}
             identity={identity}
-            funnelEnabled={funnelEnabled}
-            funnelUrl={funnelUrl}
-            onToggleFunnel={onToggleFunnel}
             onDisconnect={onDisconnect}
           />
         )}

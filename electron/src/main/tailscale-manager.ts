@@ -6,7 +6,6 @@ const execAsync = promisify(exec)
 
 export class TailscaleManager {
   private serveProcess: ReturnType<typeof spawn> | null = null
-  private funnelProcess: ReturnType<typeof spawn> | null = null
   private cachedStatus: TailscaleStatus | null = null
 
   async getStatus(): Promise<TailscaleStatus> {
@@ -132,46 +131,6 @@ export class TailscaleManager {
     if (this.serveProcess) {
       this.serveProcess.kill()
       this.serveProcess = null
-    }
-  }
-
-  async startFunnel(port: number): Promise<string> {
-    const status = await this.getStatus()
-    if (!status.running || !status.loggedIn) {
-      throw new Error("Tailscale is not running or not logged in")
-    }
-
-    return new Promise((resolve, reject) => {
-      this.funnelProcess = spawn("tailscale", ["funnel", "--bg", `${port}`], {
-        stdio: ["ignore", "pipe", "pipe"],
-      })
-
-      setTimeout(async () => {
-        const freshStatus = await this.getStatus()
-        if (freshStatus.deviceName && freshStatus.tailnetName) {
-          // Funnel URLs use the same format
-          const url = `https://${freshStatus.deviceName}.${freshStatus.tailnetName}`
-          resolve(url)
-        } else {
-          reject(new Error("Could not determine funnel URL"))
-        }
-      }, 2000)
-
-      this.funnelProcess.on("error", (err) => {
-        reject(new Error(`Failed to start Tailscale Funnel: ${err.message}`))
-      })
-    })
-  }
-
-  async stopFunnel(): Promise<void> {
-    try {
-      await execAsync("tailscale funnel --bg off")
-    } catch {
-      // Ignore errors
-    }
-    if (this.funnelProcess) {
-      this.funnelProcess.kill()
-      this.funnelProcess = null
     }
   }
 }

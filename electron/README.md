@@ -15,7 +15,6 @@ TailOverlay creates a private, secure workspace between exactly TWO devices conn
 
 - **Secure Workspace Sharing**: Host or join workspaces exclusively over your Tailscale tailnet
 - **ACL Enforcement Demo**: Demonstrates Tailscale ACL-based access control (block/unblock)
-- **Funnel Demo Lobby**: Optional public landing page with QR code for hackathon judges
 - **Identity Integration**: Displays Tailscale identity (device name + user email) on messages
 
 ## Requirements
@@ -50,7 +49,7 @@ electron/
 │   │   ├── index.ts             # App entry, window management, IPC handlers
 │   │   ├── preload.ts           # Context bridge for secure renderer access
 │   │   ├── host-service.tsx     # Express + WebSocket server (port 4173)
-│   │   └── tailscale-manager.ts # Tailscale CLI integration (serve/funnel)
+│   │   └── tailscale-manager.ts # Tailscale CLI integration (serve)
 │   ├── renderer/                # React UI
 │   │   ├── App.tsx              # Main app component with state management
 │   │   └── components/          # UI components (WelcomeScreen, ChatTab, etc.)
@@ -63,9 +62,8 @@ electron/
 
 ### How It Works
 
-1. **Host Service**: Runs on `localhost:4173` (HTTP) and `localhost:4174` (Funnel demo)
+1. **Host Service**: Runs on `localhost:4173` (HTTP)
 2. **Tailscale Serve**: Exposes the host service as a private HTTPS URL within your tailnet
-3. **Tailscale Funnel**: Optionally exposes a read-only demo lobby publicly for judges
 
 ### API Endpoints (Host Service)
 
@@ -77,7 +75,6 @@ electron/
 | `/api/upload` | POST | Multipart upload for files/screenshots |
 | `/api/health` | GET | Health check with current workspace code |
 | `/ws` | WebSocket | Real-time events (chat, posts, presence) |
-| `/demo` | GET | Public demo lobby page (Funnel only) |
 
 ### WebSocket Message Types
 
@@ -145,15 +142,6 @@ This app is designed to demonstrate Tailscale ACL enforcement:
 }
 ```
 
-## Funnel Demo Lobby (Optional)
-
-For hackathon judges who aren't on your tailnet:
-
-1. Enable **"Public Demo Lobby"** toggle when hosting
-2. The app runs `tailscale funnel` to expose a read-only landing page
-3. Judges can scan a QR code to see project info (workspace content remains private)
-4. Demo lobby runs on port 4174, separate from the private workspace
-
 ## Identity
 
 TailOverlay extracts identity from `tailscale status --json`:
@@ -207,7 +195,6 @@ interface ChatMessage {
 | "tailscale: command not found" | Add Tailscale to PATH or use full path |
 | Connection refused | Check host service is running, firewall allows port 4173 |
 | Join fails with ACL error | Update Tailscale ACLs to allow access |
-| Funnel not working | Funnel requires HTTPS, must be enabled in admin console |
 
 ## License
 

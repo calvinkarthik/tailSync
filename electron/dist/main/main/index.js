@@ -211,24 +211,6 @@ electron_1.ipcMain.handle("stop-host", async () => {
     }
     if (tailscaleManager) {
         await tailscaleManager.stopServe();
-        await tailscaleManager.stopFunnel();
-    }
-});
-electron_1.ipcMain.handle("enable-funnel", async () => {
-    if (!tailscaleManager || !hostService)
-        throw new Error("Host not running");
-    // Start the demo lobby server on a separate port
-    const demoPort = 4174;
-    const funnelUrl = await tailscaleManager.startFunnel(demoPort);
-    hostService.startDemoLobby(demoPort, funnelUrl);
-    return funnelUrl;
-});
-electron_1.ipcMain.handle("disable-funnel", async () => {
-    if (!tailscaleManager)
-        return;
-    await tailscaleManager.stopFunnel();
-    if (hostService) {
-        hostService.stopDemoLobby();
     }
 });
 electron_1.ipcMain.handle("capture-screenshot", async () => {

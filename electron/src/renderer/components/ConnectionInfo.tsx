@@ -8,9 +8,6 @@ interface ConnectionInfoProps {
   workspace: Workspace
   tailnetUrl: string
   identity: Identity
-  funnelEnabled?: boolean
-  funnelUrl?: string | null
-  onToggleFunnel?: () => void
   onDisconnect: () => void
 }
 
@@ -19,9 +16,6 @@ export function ConnectionInfo({
   workspace,
   tailnetUrl,
   identity,
-  funnelEnabled,
-  funnelUrl,
-  onToggleFunnel,
   onDisconnect,
 }: ConnectionInfoProps) {
   const [copied, setCopied] = useState<string | null>(null)
@@ -134,61 +128,6 @@ export function ConnectionInfo({
           </div>
         )}
       </div>
-
-      {/* Funnel toggle (host only) */}
-      {mode === "host" && onToggleFunnel && (
-        <div className="mt-4 glass-light rounded-xl p-3">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="text-sm font-medium">Public Demo Lobby</p>
-              <p className="text-xs text-muted-foreground">Enable Tailscale Funnel for judges</p>
-            </div>
-            <button
-              onClick={onToggleFunnel}
-              className={`w-12 h-6 rounded-full transition-colors relative ${
-                funnelEnabled ? "bg-success" : "bg-muted"
-              }`}
-            >
-              <div
-                className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
-                  funnelEnabled ? "left-7" : "left-1"
-                }`}
-              />
-            </button>
-          </div>
-          {funnelEnabled && funnelUrl && (
-            <div className="pt-2 border-t border-border">
-              <label className="text-xs text-muted-foreground mb-1 block">Demo Lobby URL</label>
-              <div className="flex items-center gap-2">
-                <span className="flex-1 text-xs font-mono truncate text-primary">{funnelUrl}/demo</span>
-                <button
-                  onClick={() => copyToClipboard(`${funnelUrl}/demo`, "funnel")}
-                  className="p-1.5 rounded-lg hover:bg-secondary transition-colors shrink-0"
-                >
-                  {copied === "funnel" ? (
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="text-success"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  ) : (
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Disconnect button */}
       <div className="mt-auto pt-4">

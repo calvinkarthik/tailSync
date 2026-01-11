@@ -51,6 +51,4 @@ export interface AppState {
   connectionStatus: "disconnected" | "connecting" | "connected" | "error"
   error: string | null
   tailscaleStatus: TailscaleStatus
-  funnelEnabled: boolean
-  funnelUrl: string | null
 }

@@ -15,8 +15,6 @@ declare global {
       getIdentity: () => Promise<Identity>
       startHost: () => Promise<{ code: string; tailnetUrl: string; identity: Identity }>
       stopHost: () => Promise<void>
-      enableFunnel: () => Promise<string>
-      disableFunnel: () => Promise<void>
       captureScreenshot: () => Promise<{ buffer: string; filename: string }>
       openTailscale: () => void
       minimizeWindow: () => void
@@ -40,8 +38,6 @@ const initialState: AppState = {
     selfIP: null,
     userEmail: null,
   },
-  funnelEnabled: false,
-  funnelUrl: null,
 }
 
 export default function App() {
@@ -187,6 +183,13 @@ export default function App() {
   }
 
   const handleDisconnect = async () => {
+    const resetToWelcome = () => {
+      setState({ ...initialState })
+      setIdentity(null)
+      setPosts([])
+      setMessages([])
+    }
+
     try {
       if (ws) {
         ws.close()
@@ -198,39 +201,26 @@ export default function App() {
         setHostWs(null)
       }
 
+      // Immediately snap back to the welcome screen so the UI never gets stuck
+      resetToWelcome()
+
       if (state.mode === "host") {
-        await window.electronAPI.stopHost()
+        const stopHostPromise = window.electronAPI.stopHost()
+        stopHostPromise.catch((err) => console.error("stopHost error:", err))
+
+        await Promise.race([stopHostPromise, new Promise<void>((resolve) => setTimeout(resolve, 1000))])
       }
     } catch (err) {
       console.error("Disconnect error:", err)
-    } finally {
-      // Force-reset UI back to welcome immediately
-      setState({ ...initialState })
-      setIdentity(null)
-      setPosts([])
-      setMessages([])
-
-      // Refresh tailscale status in the background
-      try {
-        const status = await window.electronAPI.getTailscaleStatus()
-        setState((prev) => ({ ...prev, tailscaleStatus: status }))
-      } catch (err) {
-        console.error("Failed to refresh Tailscale status:", err)
-      }
+      resetToWelcome()
     }
-  }
 
-  const handleToggleFunnel = async () => {
+    // Refresh tailscale status in the background
     try {
-      if (state.funnelEnabled) {
-        await window.electronAPI.disableFunnel()
-        setState((prev) => ({ ...prev, funnelEnabled: false, funnelUrl: null }))
-      } else {
-        const funnelUrl = await window.electronAPI.enableFunnel()
-        setState((prev) => ({ ...prev, funnelEnabled: true, funnelUrl }))
-      }
-    } catch (err: any) {
-      console.error("Funnel toggle error:", err)
+      const status = await window.electronAPI.getTailscaleStatus()
+      setState((prev) => ({ ...prev, tailscaleStatus: status }))
+    } catch (err) {
+      console.error("Failed to refresh Tailscale status:", err)
     }
   }
 
@@ -338,9 +328,6 @@ export default function App() {
             identity={identity!}
             posts={posts}
             messages={messages}
-            funnelEnabled={state.funnelEnabled}
-            funnelUrl={state.funnelUrl}
-            onToggleFunnel={handleToggleFunnel}
             onSendMessage={handleSendMessage}
             onUploadFile={handleUploadFile}
             onDisconnect={handleDisconnect}
