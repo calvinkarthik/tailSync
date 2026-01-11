@@ -58,15 +58,6 @@ export default function App() {
   const [ws, setWs] = useState<WebSocket | null>(null)
   const [hostWs, setHostWs] = useState<WebSocket | null>(null)
   const [activePanel, setActivePanel] = useState<"feed" | "chat" | "connection" | null>(null)
-  const isWorkspaceMode = state.mode === "host" || state.mode === "join"
-  const shouldShowWorkspacePanel = isWorkspaceMode && activePanel !== null
-  const containerClassName = [
-    "h-full flex flex-col rounded-2xl overflow-hidden transition-opacity duration-150",
-    state.mode === "welcome" || shouldShowWorkspacePanel ? "glass opacity-100" : "",
-    isWorkspaceMode && !shouldShowWorkspacePanel ? "opacity-0 pointer-events-none select-none" : "",
-  ]
-    .filter(Boolean)
-    .join(" ")
 
   // Check Tailscale status on mount and periodically
   useEffect(() => {
@@ -107,6 +98,7 @@ export default function App() {
         connectionStatus: "connected",
       }))
       setIdentity(result.identity)
+      setActivePanel("connection")
 
       // Subscribe to local host WebSocket so the host receives guest chat/posts
       const websocket = new WebSocket("ws://127.0.0.1:4173/ws")
@@ -166,6 +158,7 @@ export default function App() {
         }))
         setPosts(data.posts || [])
         setMessages(data.messages || [])
+        setActivePanel("connection")
       }
 
       websocket.onmessage = (event) => {
@@ -371,7 +364,7 @@ export default function App() {
   }
 
   return (
-    <div className={containerClassName}>
+    <div className="h-full flex flex-col rounded-2xl overflow-hidden glass">
       <div className="flex-1 overflow-hidden">
         {state.mode === "welcome" && (
           <WelcomeScreen
@@ -383,7 +376,7 @@ export default function App() {
           />
         )}
 
-        {state.mode === "host" && shouldShowWorkspacePanel && (
+        {state.mode === "host" && (
           <HostView
             workspace={state.workspace!}
             tailnetUrl={state.tailnetUrl!}
@@ -398,7 +391,7 @@ export default function App() {
           />
         )}
 
-        {state.mode === "join" && shouldShowWorkspacePanel && (
+        {state.mode === "join" && (
           <JoinView
             workspace={state.workspace!}
             tailnetUrl={state.tailnetUrl!}
