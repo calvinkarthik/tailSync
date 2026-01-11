@@ -182,6 +182,10 @@ body {
   border-color: var(--accent);
 }
 
+.btn-outline-purple-hover:hover {
+  border-color: var(--accent);
+}
+
 .btn-outline-purple:focus-visible,
 .btn-outline-purple:active {
   border-color: var(--accent);

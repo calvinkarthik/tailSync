@@ -166,7 +166,7 @@ export function WelcomeScreen({ tailscaleStatus, onStartHost, onJoin, error, isC
             <button
               type="submit"
               disabled={!tailnetUrl || !code || isConnecting}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground font-medium transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 px-4 rounded-xl bg-black text-white border border-border btn-outline-purple-hover font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {isConnecting ? (
                 <>
