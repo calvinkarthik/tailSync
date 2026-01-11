@@ -115,7 +115,7 @@ function createWindow() {
             mainWindow = null;
         }
     });
-    mainWindow.on("minimize", (event) => {
+    mainWindow.on("before-closed", (event) => {
         event.preventDefault();
         hideWindow();
     });

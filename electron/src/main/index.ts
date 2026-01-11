@@ -10,6 +10,7 @@ import {
   nativeImage,
   clipboard,
   type NativeImage,
+  type Event,
 } from "electron"
 import path from "path"
 import { spawn } from "child_process"
@@ -101,7 +102,7 @@ function createWindow() {
     }
   })
 
-  mainWindow.on("minimize", (event) => {
+  mainWindow.on("before-closed" as any, (event: Event) => {
     event.preventDefault()
     hideWindow()
   })
