@@ -151,38 +151,12 @@ body {
   }
 }
 
-@keyframes riseIn {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-@keyframes riseOut {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(100%);
-  }
-}
-
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
 }
 
 .animate-slide-in {
   animation: slideIn 0.3s ease-out;
-}
-
-.welcome-shell-in {
-  animation: riseIn 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.welcome-shell-out {
-  animation: riseOut 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .animate-pulse {

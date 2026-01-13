@@ -379,12 +379,9 @@ export default function App() {
     }
   }
 
-  const welcomeAnimationClass =
-    state.mode === "welcome" ? (windowVisible ? "welcome-shell-in" : "welcome-shell-out") : ""
-
   const rootClassName = `h-full flex flex-col rounded-2xl overflow-hidden ${
     state.mode === "welcome" ? "glass" : ""
-  } ${welcomeAnimationClass}`
+  }`
 
   return (
     <div className={rootClassName}>
