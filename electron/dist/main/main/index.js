@@ -48,8 +48,16 @@ let tailscaleManager = null;
 let tray = null;
 let isQuitting = false;
 let notchShouldBeVisible = false;
+let hideAnimationTimer = null;
+let windowMoveTimer = null;
+let currentMode = "welcome";
+let fixedWindowSize = null;
 const GLOBAL_HOTKEY = "Control+Shift+Space";
 const isDev = process.env.NODE_ENV === "development" || !electron_1.app.isPackaged;
+const WINDOW_HIDE_ANIMATION_MS = 300;
+const WINDOW_SHOW_ANIMATION_MS = 420;
+const MAIN_WINDOW_WIDTH = 420;
+const MAIN_WINDOW_HEIGHT = 640;
 const trayFallbackIcon = electron_1.nativeImage.createFromDataURL("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAALklEQVR42u3OIQEAAAgDsFchLbFPDMzE/DLbfoqAgICAgICAgICAgICAgMB34ABtOJiX/H8dCQAAAABJRU5ErkJggg==");
 const getAppIconPath = () => {
     if (process.platform === "win32") {
@@ -79,13 +87,11 @@ function createWindow() {
     }
     const primaryDisplay = electron_1.screen.getPrimaryDisplay();
     const { width: screenWidth, height: screenHeight, x: screenX, y: screenY } = primaryDisplay.workArea;
-    const windowWidth = 420;
-    const windowHeight = 640;
     mainWindow = new electron_1.BrowserWindow({
-        width: windowWidth,
-        height: windowHeight,
-        x: Math.round(screenX + (screenWidth - windowWidth) / 2),
-        y: Math.round(screenY + (screenHeight - windowHeight) / 2),
+        width: MAIN_WINDOW_WIDTH,
+        height: MAIN_WINDOW_HEIGHT,
+        x: Math.round(screenX + (screenWidth - MAIN_WINDOW_WIDTH) / 2),
+        y: Math.round(screenY + (screenHeight - MAIN_WINDOW_HEIGHT) / 2),
         frame: false,
         transparent: true,
         alwaysOnTop: true,
@@ -98,6 +104,10 @@ function createWindow() {
             preload: path_1.default.join(__dirname, "preload.js"),
         },
     });
+    const { width, height } = mainWindow.getBounds();
+    fixedWindowSize = { width, height };
+    mainWindow.setMinimumSize(width, height);
+    mainWindow.setMaximumSize(width, height);
     if (isDev) {
         mainWindow.loadURL("http://localhost:5173");
         mainWindow.webContents.openDevTools({ mode: "detach" });
@@ -162,19 +172,117 @@ function createNotchWindow() {
 function positionMainWindowRight() {
     if (!mainWindow)
         return;
-    const primaryDisplay = electron_1.screen.getPrimaryDisplay();
-    const { width: screenWidth, height: screenHeight, x: screenX, y: screenY } = primaryDisplay.workArea;
-    const windowBounds = mainWindow.getBounds();
-    const margin = 20;
-    mainWindow.setPosition(Math.round(screenX + screenWidth - windowBounds.width - margin), Math.round(screenY + (screenHeight - windowBounds.height) / 2));
-}
-function positionMainWindowCenter() {
-    if (!mainWindow)
+    if (windowMoveTimer) {
+        clearInterval(windowMoveTimer);
+        windowMoveTimer = null;
+    }
+    if (!fixedWindowSize)
         return;
     const primaryDisplay = electron_1.screen.getPrimaryDisplay();
     const { width: screenWidth, height: screenHeight, x: screenX, y: screenY } = primaryDisplay.workArea;
     const windowBounds = mainWindow.getBounds();
-    mainWindow.setPosition(Math.round(screenX + (screenWidth - windowBounds.width) / 2), Math.round(screenY + (screenHeight - windowBounds.height) / 2));
+    const margin = 20;
+    mainWindow.setBounds({
+        width: fixedWindowSize.width,
+        height: fixedWindowSize.height,
+        x: Math.round(screenX + screenWidth - fixedWindowSize.width - margin),
+        y: Math.round(screenY + (screenHeight - fixedWindowSize.height) / 2),
+    }, false);
+}
+function positionMainWindowCenter() {
+    if (!mainWindow)
+        return;
+    if (windowMoveTimer) {
+        clearInterval(windowMoveTimer);
+        windowMoveTimer = null;
+    }
+    if (!fixedWindowSize)
+        return;
+    const primaryDisplay = electron_1.screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight, x: screenX, y: screenY } = primaryDisplay.workArea;
+    const windowBounds = mainWindow.getBounds();
+    mainWindow.setBounds({
+        width: fixedWindowSize.width,
+        height: fixedWindowSize.height,
+        x: Math.round(screenX + (screenWidth - fixedWindowSize.width) / 2),
+        y: Math.round(screenY + (screenHeight - fixedWindowSize.height) / 2),
+    }, false);
+}
+function animateWindowFromBottom() {
+    if (!mainWindow)
+        return;
+    if (windowMoveTimer) {
+        clearInterval(windowMoveTimer);
+        windowMoveTimer = null;
+    }
+    if (!fixedWindowSize)
+        return;
+    const primaryDisplay = electron_1.screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight, x: screenX, y: screenY } = primaryDisplay.workArea;
+    const targetX = Math.round(screenX + (screenWidth - fixedWindowSize.width) / 2);
+    const targetY = Math.round(screenY + (screenHeight - fixedWindowSize.height) / 2);
+    const startY = Math.round(screenY + screenHeight + 20);
+    mainWindow.setBounds({
+        width: fixedWindowSize.width,
+        height: fixedWindowSize.height,
+        x: targetX,
+        y: startY,
+    }, false);
+    const startTime = Date.now();
+    windowMoveTimer = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(1, elapsed / WINDOW_SHOW_ANIMATION_MS);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const currentY = Math.round(startY + (targetY - startY) * eased);
+        mainWindow?.setPosition(targetX, currentY);
+        if (t >= 1) {
+            clearInterval(windowMoveTimer);
+            windowMoveTimer = null;
+        }
+    }, 16);
+}
+function animateWindowToBottom(onDone) {
+    if (!mainWindow)
+        return;
+    if (windowMoveTimer) {
+        clearInterval(windowMoveTimer);
+        windowMoveTimer = null;
+    }
+    if (!fixedWindowSize)
+        return;
+    const primaryDisplay = electron_1.screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight, x: screenX, y: screenY } = primaryDisplay.workArea;
+    const windowBounds = mainWindow.getBounds();
+    const startX = windowBounds.x;
+    const startY = windowBounds.y;
+    const targetX = Math.round(screenX + (screenWidth - fixedWindowSize.width) / 2);
+    const targetY = Math.round(screenY + screenHeight + 20);
+    if (startX !== targetX) {
+        mainWindow.setBounds({
+            width: fixedWindowSize.width,
+            height: fixedWindowSize.height,
+            x: targetX,
+            y: startY,
+        }, false);
+    }
+    const startTime = Date.now();
+    windowMoveTimer = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(1, elapsed / WINDOW_HIDE_ANIMATION_MS);
+        const eased = t * t * t;
+        const currentY = Math.round(startY + (targetY - startY) * eased);
+        mainWindow?.setBounds({
+            width: fixedWindowSize.width,
+            height: fixedWindowSize.height,
+            x: targetX,
+            y: currentY,
+        }, false);
+        if (t >= 1) {
+            clearInterval(windowMoveTimer);
+            windowMoveTimer = null;
+            onDone();
+        }
+    }, 16);
 }
 function showWindow() {
     if (!mainWindow) {
@@ -184,26 +292,58 @@ function showWindow() {
     if (mainWindow.isMinimized()) {
         mainWindow.restore();
     }
+    if (hideAnimationTimer) {
+        clearTimeout(hideAnimationTimer);
+        hideAnimationTimer = null;
+    }
     mainWindow.setSkipTaskbar(false);
+    if (currentMode === "welcome") {
+        animateWindowFromBottom();
+    }
     mainWindow.show();
     mainWindow.focus();
+    mainWindow.webContents.send("window-visibility", true);
     // Keep notch visibility in sync with the main window
     if (notchWindow) {
         if (notchShouldBeVisible) {
             notchWindow.show();
+            notchWindow.webContents.send("window-visibility", true);
         }
         else {
             notchWindow.hide();
         }
     }
 }
-function hideWindow() {
+function hideWindow(animate = true) {
     if (!mainWindow)
         return;
-    mainWindow.hide();
-    mainWindow.setSkipTaskbar(true);
-    // Hide the notch whenever the main window hides (e.g., screenshot or hotkey)
-    notchWindow?.hide();
+    if (!animate) {
+        mainWindow.hide();
+        mainWindow.setSkipTaskbar(true);
+        // Hide the notch whenever the main window hides (e.g., screenshot or hotkey)
+        notchWindow?.hide();
+        return;
+    }
+    mainWindow.webContents.send("window-visibility", false);
+    notchWindow?.webContents.send("window-visibility", false);
+    if (hideAnimationTimer) {
+        clearTimeout(hideAnimationTimer);
+    }
+    if (currentMode === "welcome") {
+        animateWindowToBottom(() => {
+            mainWindow?.hide();
+            mainWindow?.setSkipTaskbar(true);
+            notchWindow?.hide();
+        });
+        return;
+    }
+    hideAnimationTimer = setTimeout(() => {
+        mainWindow?.hide();
+        mainWindow?.setSkipTaskbar(true);
+        // Hide the notch whenever the main window hides (e.g., screenshot or hotkey)
+        notchWindow?.hide();
+        hideAnimationTimer = null;
+    }, WINDOW_HIDE_ANIMATION_MS);
 }
 function toggleWindow() {
     if (!mainWindow) {
@@ -227,7 +367,7 @@ function createTray() {
         },
         {
             label: "Hide",
-            click: hideWindow,
+            click: () => hideWindow(),
         },
         { type: "separator" },
         {
@@ -313,7 +453,7 @@ electron_1.ipcMain.handle("capture-screenshot", async () => {
     }
     const wasVisible = mainWindow.isVisible();
     if (wasVisible) {
-        hideWindow();
+        hideWindow(false);
     }
     try {
         const image = await captureWithSnippingTool();
@@ -418,4 +558,7 @@ electron_1.ipcMain.on("move-window-right", () => {
 });
 electron_1.ipcMain.on("move-window-center", () => {
     positionMainWindowCenter();
+});
+electron_1.ipcMain.on("set-window-mode", (_event, mode) => {
+    currentMode = mode;
 });

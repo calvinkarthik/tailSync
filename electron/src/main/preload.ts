@@ -30,7 +30,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   offNotchScreenshot: (callback: (caption?: string) => void) => {
     ipcRenderer.removeAllListeners("notch-screenshot")
   },
+  onWindowVisibility: (callback: (visible: boolean) => void) => {
+    ipcRenderer.on("window-visibility", (_event, visible) => callback(visible))
+  },
+  offWindowVisibility: (callback: (visible: boolean) => void) => {
+    ipcRenderer.removeAllListeners("window-visibility")
+  },
   setNotchVisible: (visible: boolean) => ipcRenderer.send("set-notch-visible", visible),
   moveWindowRight: () => ipcRenderer.send("move-window-right"),
   moveWindowCenter: () => ipcRenderer.send("move-window-center"),
+  setWindowMode: (mode: "welcome" | "host" | "join") => ipcRenderer.send("set-window-mode", mode),
 })

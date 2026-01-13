@@ -31,7 +31,14 @@ electron_1.contextBridge.exposeInMainWorld("electronAPI", {
     offNotchScreenshot: (callback) => {
         electron_1.ipcRenderer.removeAllListeners("notch-screenshot");
     },
+    onWindowVisibility: (callback) => {
+        electron_1.ipcRenderer.on("window-visibility", (_event, visible) => callback(visible));
+    },
+    offWindowVisibility: (callback) => {
+        electron_1.ipcRenderer.removeAllListeners("window-visibility");
+    },
     setNotchVisible: (visible) => electron_1.ipcRenderer.send("set-notch-visible", visible),
     moveWindowRight: () => electron_1.ipcRenderer.send("move-window-right"),
     moveWindowCenter: () => electron_1.ipcRenderer.send("move-window-center"),
+    setWindowMode: (mode) => electron_1.ipcRenderer.send("set-window-mode", mode),
 });

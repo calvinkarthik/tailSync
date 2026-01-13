@@ -8,9 +8,10 @@ interface NotchToolbarProps {
   activePanel: PanelId
   onTogglePanel: (panel: Exclude<PanelId, null>) => void
   onCapture: (caption?: string) => Promise<void>
+  windowVisible: boolean
 }
 
-export function NotchToolbar({ activePanel, onTogglePanel, onCapture }: NotchToolbarProps) {
+export function NotchToolbar({ activePanel, onTogglePanel, onCapture, windowVisible }: NotchToolbarProps) {
   const [showCaption, setShowCaption] = useState(false)
   const [caption, setCaption] = useState("")
   const [isCapturing, setIsCapturing] = useState(false)
@@ -45,7 +46,10 @@ export function NotchToolbar({ activePanel, onTogglePanel, onCapture }: NotchToo
   return (
     <>
       <div className="absolute left-1/2 -translate-x-1/2 z-30" style={{ top: "17px" }}>
-        <div className="glass-light notch-toolbar rounded-full px-3.5 py-2.5 shadow-lg flex items-center gap-2.5">
+        <div
+          className={`notch-toolbar-shell ${windowVisible ? "notch-toolbar-visible" : "notch-toolbar-hidden"}`}
+        >
+          <div className="glass-light notch-toolbar rounded-full px-3.5 py-2.5 shadow-lg flex items-center gap-2.5">
           <button
             onClick={() => onTogglePanel("feed")}
             className={panelButtonClass("feed")}
@@ -104,6 +108,7 @@ export function NotchToolbar({ activePanel, onTogglePanel, onCapture }: NotchToo
             )}
           </button>
 
+          </div>
         </div>
       </div>
 

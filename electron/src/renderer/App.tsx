@@ -26,9 +26,12 @@ declare global {
       offNotchTogglePanel: (callback?: (panel: "feed" | "chat" | "connection") => void) => void
       onNotchScreenshot: (callback: (caption?: string) => void) => void
       offNotchScreenshot: (callback?: (caption?: string) => void) => void
+      onWindowVisibility: (callback: (visible: boolean) => void) => void
+      offWindowVisibility: (callback?: (visible: boolean) => void) => void
       setNotchVisible: (visible: boolean) => void
       moveWindowRight: () => void
       moveWindowCenter: () => void
+      setWindowMode: (mode: "welcome" | "host" | "join") => void
     }
   }
 }
@@ -58,6 +61,7 @@ export default function App() {
   const [ws, setWs] = useState<WebSocket | null>(null)
   const [hostWs, setHostWs] = useState<WebSocket | null>(null)
   const [activePanel, setActivePanel] = useState<"feed" | "chat" | "connection" | null>(null)
+  const [windowVisible, setWindowVisible] = useState(true)
 
   // Check Tailscale status on mount and periodically
   useEffect(() => {
@@ -298,6 +302,17 @@ export default function App() {
   }, [handleScreenshot])
 
   useEffect(() => {
+    const handleVisibility = (visible: boolean) => {
+      setWindowVisible(visible)
+    }
+
+    window.electronAPI.onWindowVisibility(handleVisibility)
+    return () => {
+      window.electronAPI.offWindowVisibility(handleVisibility)
+    }
+  }, [])
+
+  useEffect(() => {
     window.electronAPI.setPanelState(activePanel)
   }, [activePanel])
 
@@ -315,6 +330,7 @@ export default function App() {
     } else {
       window.electronAPI.moveWindowCenter()
     }
+    window.electronAPI.setWindowMode(state.mode)
   }, [state.mode])
 
 
@@ -363,8 +379,15 @@ export default function App() {
     }
   }
 
+  const welcomeAnimationClass =
+    state.mode === "welcome" ? (windowVisible ? "welcome-shell-in" : "welcome-shell-out") : ""
+
+  const rootClassName = `h-full flex flex-col rounded-2xl overflow-hidden ${
+    state.mode === "welcome" ? "glass" : ""
+  } ${welcomeAnimationClass}`
+
   return (
-    <div className="h-full flex flex-col rounded-2xl overflow-hidden glass">
+    <div className={rootClassName}>
       <div className="flex-1 overflow-hidden">
         {state.mode === "welcome" && (
           <WelcomeScreen
@@ -373,6 +396,7 @@ export default function App() {
             onJoin={handleJoin}
             error={state.error}
             isConnecting={state.connectionStatus === "connecting"}
+            windowVisible={windowVisible}
           />
         )}
 
@@ -387,6 +411,7 @@ export default function App() {
             onUploadFile={handleUploadFile}
             onDisconnect={handleDisconnect}
             activePanel={activePanel}
+            windowVisible={windowVisible}
             onClosePanel={() => setActivePanel(null)}
           />
         )}
@@ -402,6 +427,7 @@ export default function App() {
             onUploadFile={handleUploadFile}
             onDisconnect={handleDisconnect}
             activePanel={activePanel}
+            windowVisible={windowVisible}
             onClosePanel={() => setActivePanel(null)}
           />
         )}

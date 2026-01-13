@@ -13,9 +13,17 @@ interface WelcomeScreenProps {
   onJoin: (tailnetUrl: string, code: string) => void
   error: string | null
   isConnecting: boolean
+  windowVisible: boolean
 }
 
-export function WelcomeScreen({ tailscaleStatus, onStartHost, onJoin, error, isConnecting }: WelcomeScreenProps) {
+export function WelcomeScreen({
+  tailscaleStatus,
+  onStartHost,
+  onJoin,
+  error,
+  isConnecting,
+  windowVisible,
+}: WelcomeScreenProps) {
   const [joinMode, setJoinMode] = useState(false)
   const [tailnetUrl, setTailnetUrl] = useState("")
   const [code, setCode] = useState("")
@@ -53,7 +61,7 @@ export function WelcomeScreen({ tailscaleStatus, onStartHost, onJoin, error, isC
   }
 
   return (
-    <div className="h-full flex flex-col p-4 animate-fade-in">
+    <div className="h-full flex flex-col p-4">
       {!joinMode ? (
         <div className="flex-1 flex flex-col justify-between">
           <div className="space-y-2 mt-6">

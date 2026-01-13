@@ -14,6 +14,7 @@ interface JoinViewProps {
   onUploadFile: (file: File) => void
   onDisconnect: () => void
   activePanel: "feed" | "chat" | "connection" | null
+  windowVisible: boolean
   onClosePanel: () => void
 }
 
@@ -27,18 +28,24 @@ export function JoinView({
   onUploadFile,
   onDisconnect,
   activePanel,
+  windowVisible,
   onClosePanel,
 }: JoinViewProps) {
   const isPanelOpen = activePanel !== null
+  const isPanelVisible = isPanelOpen && windowVisible
 
   return (
     <div className="h-full relative overflow-hidden animate-fade-in">
       <div
-        className={`absolute top-0 right-0 h-full w-full transition-transform duration-200 ${
-          isPanelOpen ? "translate-x-0 pointer-events-auto" : "translate-x-full pointer-events-none"
+        className={`absolute top-0 right-0 h-full w-full ${
+          isPanelVisible ? "pointer-events-auto" : "pointer-events-none"
         }`}
       >
-        <div className="h-full glass flex flex-col">
+        <div
+          className={`h-full glass flex flex-col panel-slide ${
+            isPanelVisible ? "panel-slide-in" : "panel-slide-out"
+          }`}
+        >
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <span className="text-sm font-medium capitalize">{activePanel || ""}</span>
             <div className="flex items-center gap-1.5">
