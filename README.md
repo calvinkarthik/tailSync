@@ -1,30 +1,61 @@
-# Tailscale overlay app
+# tailSync
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+A secure mini-workspace built on your tailnet.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/calvinkarthiks-projects/v0-tailscale-overlay-app)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/fOxwkhsmKsQ)
+tailSync is a two-device collaboration workspace that runs as a desktop app. It supports:
+- **Realtime chat**
+- **File sharing**
+- **One-click screenshots + captions** posted into a shared feed  
+…and is designed to be **Tailscale-first** (tailnet-only access + ACL demo).
 
-## Overview
+---
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+## Features
 
-## Deployment
+- **Feed**: timeline of shared files + screenshots
+- **Chat**: realtime messages over WebSockets
+- **Screenshot**: capture + optional caption → instantly appears in feed
+- **Connection panel**: host/join details + status (and clear errors when blocked)
 
-Your project is live at:
+---
 
-**[https://vercel.com/calvinkarthiks-projects/v0-tailscale-overlay-app](https://vercel.com/calvinkarthiks-projects/v0-tailscale-overlay-app)**
+## Tech Stack
 
-## Build your app
+Electron, Node.js, TypeScript, React, Vite, Tailwind CSS, Express, WebSocket (ws), Multer, Docker, Docker Compose, Tailscale, Tailscale Serve, Tailscale ACLs, Tailscale Funnel
 
-Continue building your app on:
+---
 
-**[https://v0.app/chat/fOxwkhsmKsQ](https://v0.app/chat/fOxwkhsmKsQ)**
+## Requirements
 
-## How It Works
+- **Node.js** (LTS recommended)
+- **npm**
+- **Tailscale** installed + logged in (for tailnet connectivity)
+- Two devices (Host + Joiner) connected to the **same tailnet**
 
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+> If you’re only testing locally on one machine, you can still run the app, but the intended demo is two devices over Tailscale.
+
+---
+
+## Quick Start (Dev)
+
+> Main startup flow (as requested):  
+> `cd electron`, `npm install`, then split terminals and run `npm run dev` + `npm start`.
+
+### 1) Install dependencies
+
+```bash
+cd electron
+npm install
+```
+
+### 2) Run the app (two terminals)
+
+Terminal A
+
+```npm run dev```
+
+Terminal B
+
+```npm start```
+
+For further tailscale launch instructions, you cna first launch tailSync and then press the setup guide at the bottom of the screen.

@@ -71,7 +71,7 @@ export function FeedTab({ posts, tailnetUrl, onUploadFile }: FeedTabProps) {
   return (
     <div
       className={`h-full flex flex-col p-4 rounded-xl ${
-        isDragging ? "border-2 border-dashed border-primary/60 bg-primary/5" : ""
+        isDragging ? "border-2 border-dashed border-[#5b2ad6]/60 bg-[#5b2ad6]/5" : ""
       }`}
       onDrop={handleDrop}
       onDragOver={handleDragOver}

@@ -152,7 +152,7 @@ export function WelcomeScreen({
                 value={tailnetUrl}
                 onChange={(e) => setTailnetUrl(e.target.value)}
                 placeholder="100.x.x.x or device.tailnet.ts.net"
-                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#5b2ad6]/50"
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Enter the host's Tailscale IP (e.g., 100.64.0.1) or MagicDNS name
@@ -167,7 +167,7 @@ export function WelcomeScreen({
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="123456"
                 maxLength={6}
-                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-center text-lg tracking-widest"
+                className="w-full px-3 py-2.5 rounded-lg bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#5b2ad6]/50 font-mono text-center text-lg tracking-widest"
               />
             </div>
 
