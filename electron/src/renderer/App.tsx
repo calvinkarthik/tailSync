@@ -80,11 +80,23 @@ export default function App() {
     }
 
     checkStatus()
-    const interval = setInterval(checkStatus, 5000)
+    const interval = setInterval(checkStatus, 10000) // Reduced from 5s to 10s
     return () => clearInterval(interval)
   }, [])
 
-  const handleStartHost = async () => {
+  // Cleanup WebSocket connections on unmount
+  useEffect(() => {
+    return () => {
+      if (ws) {
+        ws.close()
+      }
+      if (hostWs) {
+        hostWs.close()
+      }
+    }
+  }, [ws, hostWs])
+
+  const handleStartHost = useCallback(async () => {
     try {
       setState((prev) => ({ ...prev, connectionStatus: "connecting", error: null }))
 
@@ -124,9 +136,9 @@ export default function App() {
         error: err.message || "Failed to start host",
       }))
     }
-  }
+  }, [])
 
-  const handleJoin = async (tailnetUrl: string, code: string) => {
+  const handleJoin = useCallback(async (tailnetUrl: string, code: string) => {
     try {
       setState((prev) => ({ ...prev, connectionStatus: "connecting", error: null }))
 
@@ -197,9 +209,9 @@ export default function App() {
         error: err.message || "Failed to join workspace",
       }))
     }
-  }
+  }, [])
 
-  const handleDisconnect = async () => {
+  const handleDisconnect = useCallback(async () => {
     let didReset = false
     const resetToWelcome = () => {
       if (didReset) return
@@ -245,7 +257,7 @@ export default function App() {
         console.error("Failed to refresh Tailscale status:", err)
       }
     }
-  }
+  }, [ws, hostWs, state.mode])
 
   const handleScreenshot = useCallback(async (caption?: string) => {
     try {
@@ -379,9 +391,8 @@ export default function App() {
     }
   }
 
-  const rootClassName = `h-full flex flex-col rounded-2xl overflow-hidden ${
-    state.mode === "welcome" ? "glass" : ""
-  }`
+  const rootClassName = `h-full flex flex-col rounded-2xl overflow-hidden ${state.mode === "welcome" ? "glass" : ""
+    }`
 
   return (
     <div className={rootClassName}>
