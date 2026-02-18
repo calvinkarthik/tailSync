@@ -1,5 +1,5 @@
 import express from "express"
-import { createServer, type Server } from "http"
+import { createServer, type Server, type IncomingMessage } from "http"
 import { WebSocketServer, WebSocket } from "ws"
 import cors from "cors"
 import multer from "multer"
@@ -8,10 +8,23 @@ import fs from "fs"
 import { v4 as uuidv4 } from "uuid"
 import { exec } from "child_process"
 import { promisify } from "util"
-import type { Identity, Post, ChatMessage, Workspace, WSMessageType } from "../shared/types"
+import type { Identity, JoinRequest, Post, ChatMessage, Workspace, WSMessageType } from "../shared/types"
 
 const WORKSPACE_DIR = path.join(process.cwd(), "tailoverlay-workspace")
 const execAsync = promisify(exec)
+
+type PendingJoin = {
+  id: string
+  identity: Identity
+  identityKey: string
+  requestedAt: string
+  requestedAtMs: number
+}
+
+type CompletedJoin = {
+  identityKey: string
+  completedAtMs: number
+}
 
 export class HostService {
   private app: express.Application
@@ -23,7 +36,13 @@ export class HostService {
   private posts: Post[] = []
   private messages: ChatMessage[] = []
   private clients: Set<WebSocket> = new Set()
-  private allowedDevices: string[]
+  private members: Map<string, Identity> = new Map()
+  private pendingRequests: Map<string, PendingJoin> = new Map()
+  private pendingByIdentity: Map<string, string> = new Map()
+  private approvedRequests: Map<string, CompletedJoin> = new Map()
+  private deniedRequests: Map<string, CompletedJoin> = new Map()
+  private readonly pendingTtlMs = 10 * 60 * 1000
+  private readonly completedTtlMs = 5 * 60 * 1000
 
   constructor(code: string, hostIdentity: Identity) {
     this.code = code
@@ -33,14 +52,7 @@ export class HostService {
       createdAt: new Date().toISOString(),
       hostIdentity,
     }
-    // Comma-separated list of allowed device names (match Tailscale device names).
-    const envAllow = process.env.TS_ALLOWED_DEVICES
-    this.allowedDevices = envAllow
-      ? envAllow
-          .split(",")
-          .map((d) => d.trim().toLowerCase())
-          .filter(Boolean)
-      : ["calvin", "remy-r"]
+    this.members.set(this.identityKey(hostIdentity), hostIdentity)
     this.app = express()
     this.setupMiddleware()
     this.setupRoutes()
@@ -94,9 +106,11 @@ export class HostService {
       res.json({ code: this.code })
     })
 
-    this.app.post("/api/join", async (req, res) => {
+    this.app.post("/api/join-request", async (req, res) => {
       const { code } = req.body
       const remoteIp = this.getClientIp(req)
+      this.cleanupExpiredRequests()
+
       const callerIdentity = await this.resolveTailscaleIdentity(remoteIp)
       console.log(`[v0] Join request with code: ${code}, expected: ${this.code}, from ${remoteIp}`)
 
@@ -112,39 +126,154 @@ export class HostService {
           .json({ error: "Not on tailnet or Tailscale identity unavailable. Ask host to grant access." })
       }
 
-      if (!this.isAllowedDevice(callerIdentity.deviceName)) {
-        console.log(
-          `[v0] Join rejected - device ${callerIdentity.deviceName} is not in allowed list: ${this.allowedDevices.join(", ")}`,
-        )
-        return res.status(403).json({
-          error: `Blocked by Tailscale ACL or not allowed. Allowed devices: ${this.allowedDevices.join(", ")}`,
+      const identityKey = this.identityKey(callerIdentity)
+
+      if (this.members.has(identityKey)) {
+        console.log("[v0] Join approved - already a member")
+        return res.json({
+          status: "approved",
+          workspace: this.workspace,
+          posts: this.posts,
+          messages: this.messages,
         })
       }
 
-      console.log("[v0] Join successful!")
-      res.json({
-        workspace: this.workspace,
-        posts: this.posts,
-        messages: this.messages,
+      const existingRequestId = this.pendingByIdentity.get(identityKey)
+      if (existingRequestId && this.pendingRequests.has(existingRequestId)) {
+        console.log("[v0] Join pending - request already exists")
+        return res.json({ status: "pending", requestId: existingRequestId })
+      }
+
+      const requestId = uuidv4()
+      const requestedAt = new Date().toISOString()
+      this.pendingRequests.set(requestId, {
+        id: requestId,
+        identity: callerIdentity,
+        identityKey,
+        requestedAt,
+        requestedAtMs: Date.now(),
       })
+      this.pendingByIdentity.set(identityKey, requestId)
+
+      const joinRequest: JoinRequest = {
+        id: requestId,
+        identity: callerIdentity,
+        requestedAt,
+      }
+
+      console.log("[v0] Join pending - awaiting host approval")
+      this.broadcast({ type: "join:request", data: joinRequest })
+      return res.json({ status: "pending", requestId })
     })
 
-    this.app.get("/api/feed", (req, res) => {
+    this.app.get("/api/join-status/:requestId", async (req, res) => {
+      const { requestId } = req.params
+      const remoteIp = this.getClientIp(req)
+      this.cleanupExpiredRequests()
+
+      const callerIdentity = await this.resolveTailscaleIdentity(remoteIp)
+      if (!callerIdentity) {
+        return res
+          .status(403)
+          .json({ error: "Not on tailnet or Tailscale identity unavailable. Ask host to grant access." })
+      }
+
+      const identityKey = this.identityKey(callerIdentity)
+
+      const pending = this.pendingRequests.get(requestId)
+      if (pending) {
+        if (pending.identityKey !== identityKey) {
+          return res.status(403).json({ error: "Join request not authorized for this device" })
+        }
+        return res.json({ status: "pending" })
+      }
+
+      const approved = this.approvedRequests.get(requestId)
+      if (approved) {
+        if (approved.identityKey !== identityKey) {
+          return res.status(403).json({ error: "Join request not authorized for this device" })
+        }
+        return res.json({
+          status: "approved",
+          workspace: this.workspace,
+          posts: this.posts,
+          messages: this.messages,
+        })
+      }
+
+      const denied = this.deniedRequests.get(requestId)
+      if (denied) {
+        if (denied.identityKey !== identityKey) {
+          return res.status(403).json({ error: "Join request not authorized for this device" })
+        }
+        return res.json({ status: "denied" })
+      }
+
+      return res.status(404).json({ error: "Join request not found" })
+    })
+
+    this.app.post("/api/join-approve", (req, res) => {
+      if (!this.isLocalRequest(req)) {
+        return res.status(403).json({ error: "Forbidden" })
+      }
+
+      const { requestId } = req.body || {}
+      if (!requestId || typeof requestId !== "string") {
+        return res.status(400).json({ error: "requestId is required" })
+      }
+
+      const pending = this.pendingRequests.get(requestId)
+      if (!pending) {
+        return res.status(404).json({ error: "Join request not found" })
+      }
+
+      this.pendingRequests.delete(requestId)
+      this.pendingByIdentity.delete(pending.identityKey)
+      this.members.set(pending.identityKey, pending.identity)
+      this.approvedRequests.set(requestId, { identityKey: pending.identityKey, completedAtMs: Date.now() })
+      return res.json({ ok: true })
+    })
+
+    this.app.post("/api/join-deny", (req, res) => {
+      if (!this.isLocalRequest(req)) {
+        return res.status(403).json({ error: "Forbidden" })
+      }
+
+      const { requestId } = req.body || {}
+      if (!requestId || typeof requestId !== "string") {
+        return res.status(400).json({ error: "requestId is required" })
+      }
+
+      const pending = this.pendingRequests.get(requestId)
+      if (!pending) {
+        return res.status(404).json({ error: "Join request not found" })
+      }
+
+      this.pendingRequests.delete(requestId)
+      this.pendingByIdentity.delete(pending.identityKey)
+      this.deniedRequests.set(requestId, { identityKey: pending.identityKey, completedAtMs: Date.now() })
+      return res.json({ ok: true })
+    })
+
+    this.app.get("/api/feed", async (req, res) => {
+      const identity = await this.requireMember(req, res)
+      if (!identity) {
+        return
+      }
       res.json({ posts: this.posts })
     })
 
-    this.app.post("/api/upload", upload.single("file"), (req, res) => {
+    this.app.post("/api/upload", upload.single("file"), async (req, res) => {
+      const callerIdentity = await this.requireMember(req, res)
+      if (!callerIdentity) {
+        return
+      }
       const file = req.file
       if (!file) {
         return res.status(400).json({ error: "No file uploaded" })
       }
 
-      let senderIdentity: Identity
-      try {
-        senderIdentity = JSON.parse(req.body.identity || "{}")
-      } catch {
-        senderIdentity = this.hostIdentity
-      }
+      const senderIdentity = callerIdentity
 
       const post: Post = {
         id: uuidv4(),
@@ -163,7 +292,11 @@ export class HostService {
       res.json({ post })
     })
 
-    this.app.get("/api/download/:filename", (req, res) => {
+    this.app.get("/api/download/:filename", async (req, res) => {
+      const identity = await this.requireMember(req, res)
+      if (!identity) {
+        return
+      }
       const filePath = path.join(WORKSPACE_DIR, "uploads", req.params.filename)
       if (fs.existsSync(filePath)) {
         res.download(filePath)
@@ -172,14 +305,18 @@ export class HostService {
       }
     })
 
-    this.app.post("/api/chat", (req, res) => {
-      const { text, identity } = req.body
+    this.app.post("/api/chat", async (req, res) => {
+      const callerIdentity = await this.requireMember(req, res)
+      if (!callerIdentity) {
+        return
+      }
+      const { text } = req.body
 
       const message: ChatMessage = {
         id: uuidv4(),
         text,
         createdAt: new Date().toISOString(),
-        senderIdentity: identity || this.hostIdentity,
+        senderIdentity: callerIdentity,
       }
 
       this.messages.push(message)
@@ -197,15 +334,74 @@ export class HostService {
     })
   }
 
-  private isAllowedDevice(deviceName: string | undefined | null): boolean {
-    if (!deviceName) return false
-    return this.allowedDevices.includes(deviceName.toLowerCase())
+  private identityKey(identity: Identity): string {
+    const key = identity.userEmail || identity.deviceName || identity.hostname
+    return key.toLowerCase()
+  }
+
+  private normalizeIp(raw: string): string {
+    let cleaned = raw.trim().replace("::ffff:", "")
+    if (cleaned.startsWith("[") && cleaned.includes("]")) {
+      cleaned = cleaned.slice(1, cleaned.indexOf("]"))
+    }
+    if (/^\d+\.\d+\.\d+\.\d+:\d+$/.test(cleaned)) {
+      cleaned = cleaned.split(":")[0]
+    }
+    return cleaned
   }
 
   private getClientIp(req: express.Request): string {
     const xfwd = (req.headers["x-forwarded-for"] as string) || ""
     const raw = xfwd.split(",")[0].trim() || req.ip || ""
-    return raw.replace("::ffff:", "")
+    return this.normalizeIp(raw)
+  }
+
+  private getWsClientIp(req: IncomingMessage): string {
+    const xfwd = (req.headers["x-forwarded-for"] as string) || ""
+    const raw = xfwd.split(",")[0].trim() || req.socket.remoteAddress || ""
+    return this.normalizeIp(raw)
+  }
+
+  private isLocalRequest(req: express.Request): boolean {
+    const ip = this.getClientIp(req)
+    return ["127.0.0.1", "::1", "localhost"].includes(ip)
+  }
+
+  private async requireMember(req: express.Request, res: express.Response): Promise<Identity | null> {
+    const remoteIp = this.getClientIp(req)
+    const identity = await this.resolveTailscaleIdentity(remoteIp)
+    if (!identity) {
+      res.status(403).json({ error: "Not on tailnet or Tailscale identity unavailable." })
+      return null
+    }
+    const identityKey = this.identityKey(identity)
+    if (!this.members.has(identityKey)) {
+      res.status(403).json({ error: "Not approved to access this workspace." })
+      return null
+    }
+    return identity
+  }
+
+  private cleanupExpiredRequests() {
+    const now = Date.now()
+    for (const [requestId, pending] of this.pendingRequests.entries()) {
+      if (now - pending.requestedAtMs > this.pendingTtlMs) {
+        this.pendingRequests.delete(requestId)
+        this.pendingByIdentity.delete(pending.identityKey)
+      }
+    }
+
+    for (const [requestId, completed] of this.approvedRequests.entries()) {
+      if (now - completed.completedAtMs > this.completedTtlMs) {
+        this.approvedRequests.delete(requestId)
+      }
+    }
+
+    for (const [requestId, completed] of this.deniedRequests.entries()) {
+      if (now - completed.completedAtMs > this.completedTtlMs) {
+        this.deniedRequests.delete(requestId)
+      }
+    }
   }
 
   private async resolveTailscaleIdentity(remoteIp: string): Promise<Identity | null> {
@@ -251,10 +447,17 @@ export class HostService {
       this.wss = new WebSocketServer({ server: this.server })
 
       this.wss.on("connection", async (ws, req) => {
-        const remoteIp = (req.socket.remoteAddress || "").replace("::ffff:", "")
+        const remoteIp = this.getWsClientIp(req)
         const callerIdentity = await this.resolveTailscaleIdentity(remoteIp)
 
-        if (!callerIdentity || !this.isAllowedDevice(callerIdentity.deviceName)) {
+        if (!callerIdentity) {
+          console.log(`[v0] WebSocket rejected for ${remoteIp} (unknown) - not allowed`)
+          ws.close(1008, "Not allowed by Tailscale policy")
+          return
+        }
+
+        const identityKey = this.identityKey(callerIdentity)
+        if (!this.members.has(identityKey)) {
           console.log(
             `[v0] WebSocket rejected for ${remoteIp} (${callerIdentity?.deviceName || "unknown"}) - not allowed`,
           )
@@ -263,10 +466,11 @@ export class HostService {
         }
 
         console.log(`[v0] WebSocket connection from ${remoteIp} (${callerIdentity.deviceName})`)
+        const wsIdentity = callerIdentity
         this.clients.add(ws)
         this.broadcast({
           type: "presence",
-          data: { status: "joined", identity: callerIdentity },
+          data: { status: "joined", identity: wsIdentity },
         })
 
         ws.on("message", (data) => {
@@ -278,7 +482,7 @@ export class HostService {
                 id: uuidv4(),
                 text: msg.text,
                 createdAt: new Date().toISOString(),
-                senderIdentity: msg.identity || this.hostIdentity,
+                senderIdentity: wsIdentity,
               }
               this.messages.push(chatMessage)
               this.broadcast({ type: "chat", data: chatMessage })
@@ -293,7 +497,7 @@ export class HostService {
           this.clients.delete(ws)
           this.broadcast({
             type: "presence",
-            data: { status: "left", identity: this.hostIdentity },
+            data: { status: "left", identity: wsIdentity },
           })
         })
       })
@@ -331,12 +535,12 @@ export class HostService {
 
       if (this.server) {
         this.server.close(() => {
-        this.server = null
+          this.server = null
+          resolve()
+        })
+      } else {
         resolve()
-      })
-    } else {
-      resolve()
-    }
+      }
     })
   }
 }

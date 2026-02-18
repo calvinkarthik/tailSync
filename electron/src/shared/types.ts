@@ -4,6 +4,12 @@ export interface Workspace {
   hostIdentity: Identity
 }
 
+export interface JoinRequest {
+  id: string
+  identity: Identity
+  requestedAt: string
+}
+
 export interface Identity {
   deviceName: string
   userEmail: string | null
@@ -33,6 +39,7 @@ export type WSMessageType =
   | { type: "chat"; data: ChatMessage }
   | { type: "post:new"; data: Post }
   | { type: "presence"; data: { status: "joined" | "left"; identity: Identity } }
+  | { type: "join:request"; data: JoinRequest }
 
 export interface TailscaleStatus {
   installed: boolean
@@ -50,5 +57,6 @@ export interface AppState {
   tailnetUrl: string | null
   connectionStatus: "disconnected" | "connecting" | "connected" | "error"
   error: string | null
+  pendingApproval: boolean
   tailscaleStatus: TailscaleStatus
 }

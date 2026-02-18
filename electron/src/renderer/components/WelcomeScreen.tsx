@@ -13,6 +13,7 @@ interface WelcomeScreenProps {
   onJoin: (tailnetUrl: string, code: string) => void
   error: string | null
   isConnecting: boolean
+  pendingApproval: boolean
   windowVisible: boolean
 }
 
@@ -22,6 +23,7 @@ export function WelcomeScreen({
   onJoin,
   error,
   isConnecting,
+  pendingApproval,
   windowVisible,
 }: WelcomeScreenProps) {
   const [joinMode, setJoinMode] = useState(false)
@@ -144,6 +146,12 @@ export function WelcomeScreen({
             </div>
           )}
 
+          {pendingApproval && !error && (
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm mb-4 animate-fade-in">
+              Waiting for host approval...
+            </div>
+          )}
+
           <form onSubmit={handleJoinSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-2">Host Address</label>
@@ -179,7 +187,7 @@ export function WelcomeScreen({
               {isConnecting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  Connecting...
+                  {pendingApproval ? "Waiting for approval..." : "Connecting..."}
                 </>
               ) : (
                 "Connect"

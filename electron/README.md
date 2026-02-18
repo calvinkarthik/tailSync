@@ -70,17 +70,21 @@ electron/
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/create-workspace` | POST | Creates workspace, returns 6-digit code |
-| `/api/join` | POST | Join with `{ code }`, returns workspace metadata |
+| `/api/join-request` | POST | Request to join with `{ code }`, returns approved or pending |
+| `/api/join-status/:requestId` | GET | Poll join request status |
+| `/api/join-approve` | POST | Host approves a pending join request |
+| `/api/join-deny` | POST | Host denies a pending join request |
 | `/api/feed` | GET | Returns list of posts (screenshots/files) |
 | `/api/upload` | POST | Multipart upload for files/screenshots |
 | `/api/health` | GET | Health check with current workspace code |
-| `/ws` | WebSocket | Real-time events (chat, posts, presence) |
+| `/ws` | WebSocket | Real-time events (chat, posts, presence, join requests) |
 
 ### WebSocket Message Types
 
 - `chat` - `{ text, senderIdentity, ts }`
 - `post:new` - `{ post }` for new screenshot/file
 - `presence` - `{ status }` for join/leave events
+- `join:request` - `{ id, identity, requestedAt }` for pending join requests
 
 ## Usage
 
@@ -100,7 +104,8 @@ electron/
 1. Ensure Tailscale is running and you're logged in
 2. Launch the app and click **"Join Workspace"**
 3. Enter the host's **Tailscale IP** (e.g., `100.64.0.5`) and **6-digit code**
-4. Click Connect and start collaborating!
+4. Click Connect and wait for the host to approve your request
+5. Once approved, start collaborating!
 
 ### Testing Connection
 
@@ -115,10 +120,10 @@ Should return: `{"status":"ok","code":"123456"}`
 
 ## ACL + Identity Enforcement (Hackathon Requirement)
 
-The host service on **port 4173** is locked to a pair of devices and rejects everyone else:
+The host service on **port 4173** is only reachable over Tailscale. Access is enforced in two layers:
 
-- ACL policy file: `tailscale-acl.json` allows only `device:Calvin` and `device:Remy-r` to reach `tag:tailoverlay-host:4173`, denies all other sources on 4173, and lets `calvin.g.karthik@gmail.com` manage the tag.
-- App-level check: the host verifies the caller's Tailscale identity (via `tailscale status --json`) on `/api/join` and WebSocket connections and rejects requests from devices not in the allowlist.
+- **Tailnet ACLs (optional demo)**: `tailscale-acl.json` can restrict which devices may reach `tag:tailoverlay-host:4173`.
+- **App-level approval**: the host verifies the caller's Tailscale identity (via `tailscale status --json`) and requires host approval before access is granted.
 
 ### Apply the ACL
 
@@ -126,22 +131,12 @@ The host service on **port 4173** is locked to a pair of devices and rejects eve
 2. Tag the host device: `tailscale up --advertise-tags=tag:tailoverlay-host`.
 3. Apply the ACL in the Tailscale admin console or via the Admin API using `tailscale-acl.json`.
 
-### Configure allowed devices for the app check
-
-Set the environment variable before starting Electron to keep the allowlist in sync with your ACL:
-
-```bash
-# comma-separated Tailscale device names
-set TS_ALLOWED_DEVICES=Calvin,Remy-r   # PowerShell
-# or export TS_ALLOWED_DEVICES=Calvin,Remy-r   # bash/zsh
-```
-
 ### Demo flow (two devices)
 
 1. With the ACL applied and host tagged, start the app on the host (device Calvin).
-2. Join from device Remy-r (allowed) → succeeds.
-3. To show enforcement, temporarily remove `device:Remy-r` from the ACL (or TS_ALLOWED_DEVICES) and re-apply → join fails with *"Blocked by Tailscale ACL or not allowed"*.
-4. Re-add `device:Remy-r` → join succeeds again.
+2. Join from device Remy-r and approve the request in the host UI.
+3. To show enforcement, temporarily remove `device:Remy-r` from the ACL and re-apply -> join fails with *"Not on tailnet or Tailscale identity unavailable."*
+4. Re-add `device:Remy-r` and approve again -> join succeeds.
 
 ## Identity
 
@@ -200,3 +195,4 @@ interface ChatMessage {
 ## License
 
 MIT
+

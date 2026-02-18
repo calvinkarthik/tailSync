@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { WelcomeScreen } from "./components/WelcomeScreen"
 import { HostView } from "./components/HostView"
 import { JoinView } from "./components/JoinView"
-import type { AppState, TailscaleStatus, Identity, Post, ChatMessage } from "../shared/types"
+import type { AppState, TailscaleStatus, Identity, Post, ChatMessage, JoinRequest } from "../shared/types"
 
 declare global {
   interface Window {
@@ -42,6 +42,7 @@ const initialState: AppState = {
   tailnetUrl: null,
   connectionStatus: "disconnected",
   error: null,
+  pendingApproval: false,
   tailscaleStatus: {
     installed: false,
     running: false,
@@ -60,8 +61,10 @@ export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [ws, setWs] = useState<WebSocket | null>(null)
   const [hostWs, setHostWs] = useState<WebSocket | null>(null)
+  const [pendingJoinRequests, setPendingJoinRequests] = useState<JoinRequest[]>([])
   const [activePanel, setActivePanel] = useState<"feed" | "chat" | "connection" | null>(null)
   const [windowVisible, setWindowVisible] = useState(true)
+  const joinPollAbortRef = useRef<(() => void) | null>(null)
 
   // Check Tailscale status on mount and periodically
   useEffect(() => {
@@ -98,7 +101,7 @@ export default function App() {
 
   const handleStartHost = useCallback(async () => {
     try {
-      setState((prev) => ({ ...prev, connectionStatus: "connecting", error: null }))
+      setState((prev) => ({ ...prev, connectionStatus: "connecting", error: null, pendingApproval: false }))
 
       const result = await window.electronAPI.startHost()
 
@@ -112,8 +115,10 @@ export default function App() {
         },
         tailnetUrl: result.tailnetUrl,
         connectionStatus: "connected",
+        pendingApproval: false,
       }))
       setIdentity(result.identity)
+      setPendingJoinRequests([])
       setActivePanel("connection")
 
       // Subscribe to local host WebSocket so the host receives guest chat/posts
@@ -124,6 +129,13 @@ export default function App() {
           setMessages((prev) => [...prev, message.data])
         } else if (message.type === "post:new") {
           setPosts((prev) => [message.data, ...prev])
+        } else if (message.type === "join:request") {
+          setPendingJoinRequests((prev) => {
+            if (prev.some((req) => req.id === message.data.id)) {
+              return prev
+            }
+            return [...prev, message.data]
+          })
         }
       }
       websocket.onclose = () => setHostWs(null)
@@ -134,31 +146,13 @@ export default function App() {
         ...prev,
         connectionStatus: "error",
         error: err.message || "Failed to start host",
+        pendingApproval: false,
       }))
     }
   }, [])
 
-  const handleJoin = useCallback(async (tailnetUrl: string, code: string) => {
-    try {
-      setState((prev) => ({ ...prev, connectionStatus: "connecting", error: null }))
-
-      // Try to join the workspace
-      const response = await fetch(`${tailnetUrl}/api/join`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code }),
-      })
-
-      if (!response.ok) {
-        if (response.status === 403) {
-          throw new Error("Invalid workspace code")
-        }
-        throw new Error("Blocked by Tailscale ACL or not on tailnet. Ask host to grant access.")
-      }
-
-      const data = await response.json()
-
-      // Connect WebSocket (support both HTTPS MagicDNS and HTTP 100.x IPs)
+  const connectToWorkspace = useCallback(
+    (data: any, tailnetUrl: string) => {
       const wsUrl = tailnetUrl.startsWith("https://")
         ? tailnetUrl.replace("https://", "wss://") + "/ws"
         : tailnetUrl.replace("http://", "ws://") + "/ws"
@@ -171,6 +165,7 @@ export default function App() {
           workspace: data.workspace,
           tailnetUrl,
           connectionStatus: "connected",
+          pendingApproval: false,
         }))
         setPosts(data.posts || [])
         setMessages(data.messages || [])
@@ -191,6 +186,7 @@ export default function App() {
           ...prev,
           connectionStatus: "error",
           error: "WebSocket connection failed",
+          pendingApproval: false,
         }))
       }
 
@@ -198,18 +194,109 @@ export default function App() {
         setState((prev) => ({
           ...prev,
           connectionStatus: "disconnected",
+          pendingApproval: false,
         }))
       }
 
       setWs(websocket)
-    } catch (err: any) {
-      setState((prev) => ({
-        ...prev,
-        connectionStatus: "error",
-        error: err.message || "Failed to join workspace",
-      }))
-    }
-  }, [])
+    },
+    [setState],
+  )
+
+  const pollJoinStatus = useCallback(
+    async (tailnetUrl: string, requestId: string) => {
+      let aborted = false
+      joinPollAbortRef.current = () => {
+        aborted = true
+      }
+
+      const maxAttempts = 120
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        if (aborted) {
+          return
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+
+        if (aborted) {
+          return
+        }
+
+        const response = await fetch(`${tailnetUrl}/api/join-status/${requestId}`)
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(data?.error || "Failed to check join status")
+        }
+
+        if (data.status === "pending") {
+          continue
+        }
+
+        if (data.status === "denied") {
+          throw new Error("Join request denied by host")
+        }
+
+        if (data.status === "approved") {
+          connectToWorkspace(data, tailnetUrl)
+          return
+        }
+
+        throw new Error("Unexpected join status response")
+      }
+
+      throw new Error("Join request timed out")
+    },
+    [connectToWorkspace],
+  )
+
+  const handleJoin = useCallback(
+    async (tailnetUrl: string, code: string) => {
+      try {
+        setState((prev) => ({ ...prev, connectionStatus: "connecting", error: null, pendingApproval: false }))
+
+        if (joinPollAbortRef.current) {
+          joinPollAbortRef.current()
+          joinPollAbortRef.current = null
+        }
+
+        const response = await fetch(`${tailnetUrl}/api/join-request`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        })
+
+        const data = await response.json().catch(() => ({}))
+
+        if (!response.ok) {
+          throw new Error(data?.error || "Failed to join workspace")
+        }
+
+        if (data.status === "approved") {
+          connectToWorkspace(data, tailnetUrl)
+          return
+        }
+
+        if (data.status === "pending" && data.requestId) {
+          setState((prev) => ({ ...prev, pendingApproval: true }))
+          await pollJoinStatus(tailnetUrl, data.requestId)
+          return
+        }
+
+        throw new Error("Unexpected join response")
+      } catch (err: any) {
+        setState((prev) => ({
+          ...prev,
+          connectionStatus: "error",
+          error: err.message || "Failed to join workspace",
+          pendingApproval: false,
+        }))
+      } finally {
+        joinPollAbortRef.current = null
+      }
+    },
+    [connectToWorkspace, pollJoinStatus],
+  )
 
   const handleDisconnect = useCallback(async () => {
     let didReset = false
@@ -220,6 +307,7 @@ export default function App() {
       setIdentity(null)
       setPosts([])
       setMessages([])
+      setPendingJoinRequests([])
     }
 
     try {
@@ -231,6 +319,11 @@ export default function App() {
       if (hostWs) {
         hostWs.close()
         setHostWs(null)
+      }
+
+      if (joinPollAbortRef.current) {
+        joinPollAbortRef.current()
+        joinPollAbortRef.current = null
       }
 
       // Immediately snap back to the welcome screen so the UI never gets stuck
@@ -258,6 +351,34 @@ export default function App() {
       }
     }
   }, [ws, hostWs, state.mode])
+
+  const handleApproveJoin = useCallback(async (requestId: string) => {
+    try {
+      await fetch("http://127.0.0.1:4173/api/join-approve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId }),
+      })
+    } catch (err) {
+      console.error("Failed to approve join request:", err)
+    } finally {
+      setPendingJoinRequests((prev) => prev.filter((req) => req.id !== requestId))
+    }
+  }, [])
+
+  const handleDenyJoin = useCallback(async (requestId: string) => {
+    try {
+      await fetch("http://127.0.0.1:4173/api/join-deny", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId }),
+      })
+    } catch (err) {
+      console.error("Failed to deny join request:", err)
+    } finally {
+      setPendingJoinRequests((prev) => prev.filter((req) => req.id !== requestId))
+    }
+  }, [])
 
   const handleScreenshot = useCallback(async (caption?: string) => {
     try {
@@ -404,6 +525,7 @@ export default function App() {
             onJoin={handleJoin}
             error={state.error}
             isConnecting={state.connectionStatus === "connecting"}
+            pendingApproval={state.pendingApproval}
             windowVisible={windowVisible}
           />
         )}
@@ -415,6 +537,9 @@ export default function App() {
             identity={identity!}
             posts={posts}
             messages={messages}
+            pendingJoinRequests={pendingJoinRequests}
+            onApproveJoin={handleApproveJoin}
+            onDenyJoin={handleDenyJoin}
             onSendMessage={handleSendMessage}
             onUploadFile={handleUploadFile}
             onDisconnect={handleDisconnect}

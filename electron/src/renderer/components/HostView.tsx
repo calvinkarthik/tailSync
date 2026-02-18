@@ -1,6 +1,6 @@
 "use client"
 
-import type { Workspace, Identity, Post, ChatMessage } from "../../shared/types"
+import type { Workspace, Identity, Post, ChatMessage, JoinRequest } from "../../shared/types"
 import { WorkspaceTabs } from "./WorkspaceTabs"
 import { ConnectionInfo } from "./ConnectionInfo"
 
@@ -10,6 +10,9 @@ interface HostViewProps {
   identity: Identity
   posts: Post[]
   messages: ChatMessage[]
+  pendingJoinRequests: JoinRequest[]
+  onApproveJoin: (requestId: string) => void
+  onDenyJoin: (requestId: string) => void
   onSendMessage: (text: string) => void
   onUploadFile: (file: File) => void
   onDisconnect: () => void
@@ -24,6 +27,9 @@ export function HostView({
   identity,
   posts,
   messages,
+  pendingJoinRequests,
+  onApproveJoin,
+  onDenyJoin,
   onSendMessage,
   onUploadFile,
   onDisconnect,
@@ -90,6 +96,9 @@ export function HostView({
                 tailnetUrl={tailnetUrl}
                 identity={identity}
                 onDisconnect={onDisconnect}
+                pendingJoinRequests={pendingJoinRequests}
+                onApproveJoin={onApproveJoin}
+                onDenyJoin={onDenyJoin}
               />
             )}
           </div>

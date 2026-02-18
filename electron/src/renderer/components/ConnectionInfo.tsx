@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import type { Workspace, Identity } from "../../shared/types"
+import type { Workspace, Identity, JoinRequest } from "../../shared/types"
 
 interface ConnectionInfoProps {
   mode: "host" | "join"
@@ -9,6 +9,9 @@ interface ConnectionInfoProps {
   tailnetUrl: string
   identity: Identity
   onDisconnect: () => void
+  pendingJoinRequests?: JoinRequest[]
+  onApproveJoin?: (requestId: string) => void
+  onDenyJoin?: (requestId: string) => void
 }
 
 export function ConnectionInfo({
@@ -17,6 +20,9 @@ export function ConnectionInfo({
   tailnetUrl,
   identity,
   onDisconnect,
+  pendingJoinRequests = [],
+  onApproveJoin,
+  onDenyJoin,
 }: ConnectionInfoProps) {
   const [copied, setCopied] = useState<string | null>(null)
 
@@ -125,6 +131,38 @@ export function ConnectionInfo({
             {workspace.hostIdentity.userEmail && (
               <p className="text-xs text-muted-foreground">{workspace.hostIdentity.userEmail}</p>
             )}
+          </div>
+        )}
+
+        {mode === "host" && pendingJoinRequests.length > 0 && (
+          <div className="glass-panel rounded-xl p-3">
+            <label className="text-xs text-muted-foreground mb-2 block">Join Requests</label>
+            <div className="space-y-3">
+              {pendingJoinRequests.map((request) => (
+                <div key={request.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{request.identity.deviceName}</p>
+                    {request.identity.userEmail && (
+                      <p className="text-xs text-muted-foreground truncate">{request.identity.userEmail}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => onApproveJoin?.(request.id)}
+                      className="px-2.5 py-1.5 rounded-lg bg-success/10 text-success text-xs font-medium hover:bg-success/20 transition-colors"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => onDenyJoin?.(request.id)}
+                      className="px-2.5 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20 transition-colors"
+                    >
+                      Deny
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
