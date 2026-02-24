@@ -115,6 +115,10 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+@theme inline {
+  --font-lexend: 'Lexend Deca', 'Lexend Deca Fallback', sans-serif;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -122,4 +126,101 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ─── tailSync Mobile Theme ─── */
+
+.ts-mobile-root {
+  font-family: var(--font-lexend), sans-serif;
+  background: #05050a;
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+  position: fixed;
+  inset: 0;
+}
+
+.ts-screen {
+  height: 100dvh;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: #05050a;
+}
+
+.ts-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: #ffffff;
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.ts-input::placeholder {
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.ts-input:focus {
+  border-color: #5b2ad6;
+  box-shadow: 0 0 0 2px rgba(91, 42, 214, 0.2);
+}
+
+.ts-input-code {
+  font-family: 'Geist Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 20px;
+  letter-spacing: 0.15em;
+  text-align: center;
+}
+
+.ts-btn-primary {
+  width: 100%;
+  min-height: 56px;
+  border-radius: 14px;
+  background: #5b2ad6;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  transition: transform 100ms ease, opacity 150ms ease;
+}
+
+.ts-btn-primary:active {
+  transform: scale(0.97);
+}
+
+.ts-btn-primary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.ts-btn-primary:disabled:active {
+  transform: none;
+}
+
+.ts-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.ts-logo-glow {
+  filter: drop-shadow(0 0 12px rgba(91, 42, 214, 0.6))
+    drop-shadow(0 0 28px rgba(91, 42, 214, 0.35));
 }
